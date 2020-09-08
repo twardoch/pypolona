@@ -1,5 +1,4 @@
 orderedattrdict
-pyinstaller
 Gooey
 colored
 html2text

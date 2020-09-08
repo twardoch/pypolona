@@ -54,6 +54,12 @@ setup(
     long_description_content_type='',
     python_requires='>=3.7',
     install_requires=get_requirements('requirements.txt'),
+    extras_require={
+        'dev': [
+            'pyinstaller',
+            'dmgbuild'
+        ]
+    },
     packages=find_packages(),
     classifiers=[
         'Environment :: Console',

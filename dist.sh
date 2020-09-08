@@ -6,6 +6,7 @@ if [ $# -ge 2 ]; then
   echo "## Updating publishing tools"
 
   python3 -m pip install --user --upgrade setuptools wheel pip twine
+  python3 -m pip install -e .[dev]
   version=$1
   text=$2
 
@@ -54,7 +55,7 @@ EOF
   echo "## Publishing on https://pypi.org/project/pypolona/"
   echo "Enter your pypi.org login and password:"
 
-  python3 -m pyinstaller -y build.spec
+  pyinstaller -y build.spec
 
   python3 -m twine upload --verbose -c "$text" dist/*
   open "https://pypi.org/project/pypolona/"
