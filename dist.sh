@@ -57,6 +57,8 @@ EOF
 
   pyinstaller -y build.spec
 
+  dmgbuild -s dmgbuild_settings.py "PyPolona" dist/PyPolona.dmg
+
   python3 -m twine upload --verbose -c "$text" dist/*
   open "https://pypi.org/project/pypolona/"
 
