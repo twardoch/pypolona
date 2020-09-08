@@ -160,20 +160,32 @@ class Polona(object):
                 hit.subdir = '-'.join(hit.subdir)
                 if hit.scans:
                     if len(hit.scans):
-                        total = len(hit.scans)
-                        log.info('%s: %03d pages in %s...' %
-                                 (progress, total, hit.subdir[:40]))
+                        overwrite = True
+                        if self.o.max_pages > 0:
+                            total = len(hit.scans[:self.o.max_pages])
+                        else:
+                            total = len(hit.scans)
+                        log.info('%s: Downloading %03d/%03d pages in %s...' %
+                                 (progress, total, len(hit.scans), hit.subdir[:40]))
                         subdir = os.path.join(self.dldir, hit.subdir)
                         if os.path.isdir(subdir):
-                            log.warn('Folder %s exists' % (subdir))
+                            if self.o.overwrite:
+                                log.warn('Overwriting folder %s' % (subdir))
+                            else:
+                                overwrite = False
+                                log.info('Skipping folder %s' % (subdir))
                         else:
                             os.makedirs(subdir)
-                        for idx, scan in enumerate(hit.scans):
-                            progress = '[page %03d/%03d]' % (idx+1, total)
-                            filemask = '%s-%04d.jpg' % (hit.id, idx+1)
-                            log.info('%s: downloading %s' %
-                                     (progress, filemask))
-                            self.download_scan(scan, subdir, filemask)
+                        filemaskd = "%s.yaml" % (hit.id)
+                        with open(os.path.join(subdir, filemaskd), 'w') as yamlfile:
+                            yamlfile.write(oyaml.yaml_dump(hit))
+                        if overwrite:
+                            for idx, scan in enumerate(hit.scans[:total]):
+                                progressp = '[page %03d/%03d]' % (idx+1, total)
+                                filemaskp = '%s-%04d.jpg' % (hit.id, idx+1)
+                                log.info('%s %s: downloading %s' %
+                                         (progress, progressp, filemaskp))
+                                self.download_scan(scan, subdir, filemaskp)
 
     def download_scan(self, scan, subdir, filemask):
         url = scan['resources'][0]['url']

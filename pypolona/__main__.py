@@ -182,7 +182,22 @@ def main():
         metavar='download to folder',
         help='Download images into subfolders in this folder'
     )
-
+    parser_d.add_argument(
+        '-O',
+        '--overwrite',
+        dest='overwrite',
+        action='store_true',
+        help='Overwrite if folder exists'
+    )
+    parser_d.add_argument(
+        '-M',
+        '--max-pages',
+        dest='max_pages',
+        type=int,
+        default=0,
+        metavar='number of pages',
+        help='Maximum number of pages to download per doc (0: all)'
+    )
     opts = parser.parse_args()
     if opts:
         opts = vars(opts)
