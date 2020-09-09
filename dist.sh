@@ -14,6 +14,9 @@ if [ $# -ge 2 ]; then
 
   echo "## Preparing release"
   python3 setup.py sdist bdist_wheel
+  brew install upx
+  pyinstaller -y "app/pyinstaller-mac.spec"
+  dmgbuild -s dmgbuild_settings.py "PyPolona" "download/pypolona-mac.dmg"
 
   echo "## Pushing to Github"
   git add --all
@@ -54,11 +57,6 @@ EOF
   echo
   echo "## Publishing on https://pypi.org/project/pypolona/"
   echo "Enter your pypi.org login and password:"
-
-  brew install upx
-  pyinstaller -y app/pyinstaller.spec
-
-  dmgbuild -s app/dmgbuild_settings.py "PyPolona $version" "dist/pypolona.dmg"
 
   python3 -m twine upload --verbose -c "$text" dist/*
   open "https://pypi.org/project/pypolona/"

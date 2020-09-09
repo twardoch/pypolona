@@ -96,7 +96,7 @@ Then:
 brew install upx;
 pip3 install --user --upgrade .[dev];
 pyinstaller -y app/pyinstaller-mac.spec;
-dmgbuild -s app/dmgbuild_settings.py "PyPolona" "dist/pypolona.dmg";
+dmgbuild -s dmgbuild_settings.py "PyPolona" "download/pypolona-mac.dmg";
 ```
 
 ### Building on Windows
@@ -106,6 +106,7 @@ Install [UPX](https://upx.github.io/) in a location accessible in PATH. Then:
 ```
 pip3 install --user --upgrade .[dev];
 pyinstaller -y app/pyinstaller-win.spec;
+powershell "Compress-Archive dist/pypolona.exe download/pypolona-win.zip"
 ```
 
 ## License and Copyright
