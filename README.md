@@ -12,33 +12,29 @@ With pypolona, you can:
 - print or save the search results as a list of URLs, a YAML file, a JSON file and a simple list of Polona document IDs
 - download all or some high-resolution images from Polona for the search results, or for a provided list of Polona document IDs
 
-## Installing PyPolona
+## Install standalone PyPolona app
 
-### Standalone app
-
-#### macOS
-
-<a class="github-button btn btn-primary" href="https://github.com/twardoch/pypolona/raw/master/download/pypolona-mac.dmg" data-color-scheme="no-preference: dark; light: dark; dark: dark;" data-icon="octicon-download" data-size="large" aria-label="Download DMG for macOS">Download DMG for macOS</a>
+### <a class="github-button btn btn-primary" href="https://github.com/twardoch/pypolona/raw/master/download/pypolona-mac.dmg" data-color-scheme="no-preference: dark; light: dark; dark: dark;" data-icon="octicon-download" data-size="large" aria-label="Download DMG for macOS">Download DMG for macOS</a>
 
 On **macOS**, double-click the downloaded DMG, drag the icon to the `/Applications` folder. Then Ctrl+click the icon and choose Open, then click Open to open the GUI. Later, you can just double-click the icon. If the app does not run, double-click again.
 
-#### Windows
-
-<a class="github-button btn btn-primary" href="https://github.com/twardoch/pypolona/raw/master/download/pypolona-win.zip" data-color-scheme="no-preference: dark; light: dark; dark: dark;" data-icon="octicon-download" data-size="large" aria-label="Download ZIP for Windows">Download ZIP for Windows</a>
+### <a class="github-button btn btn-primary" href="https://github.com/twardoch/pypolona/raw/master/download/pypolona-win.zip" data-color-scheme="no-preference: dark; light: dark; dark: dark;" data-icon="octicon-download" data-size="large" aria-label="Download ZIP for Windows">Download ZIP for Windows</a>
 
 On **Windows**, unzip the downloaded ZIP, double-click the pypolona.exe icon to open the app. You need 64-bit Windows to run this.
 
-### Install pypolona Python package on macOS or Windows
+## Install pypolona Python package on macOS or Windows
 
 If you have Python 3.8+, you can install the Python version with `python3 -m pip install pypolona`.
 
-## Running the graphical PyPolona app
+## Using the app
+
+### Using the graphical PyPolona app (GUI)
 
 - If you installed the standalone app on macOS, just double-click `/Applications/PyPolona.app`
 - If you installed the standalone app on Windows, just double-click `pypolona.exe`
 - If you installed the Python version, run `ppolona` or `python3 -m pypolona`
 
-## Running the CLI
+### Using the CLI
 
 - If you installed the standalone DMG on macOS, use the CLI via `/Applications/PyPolona.app/Contents/MacOS/ppolona -h`
 - If you installed the Python version, run `ppolona -h` or `python3 -m pypolona -h`
