@@ -120,3 +120,7 @@ powershell "Compress-Archive dist/pypolona.exe download/pypolona-win.zip"
 ## License and Copyright
 
 Copyright © 2020 Adam Twardoch. Licensed under the terms of the [MIT license](./LICENSE). This project is not affiliated with and not endorsed by Polona.
+
+<!-- Place this tag in your head or just before your close body tag. -->
+<script async defer src="https://buttons.github.io/buttons.js"></script>
+
