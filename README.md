@@ -16,15 +16,20 @@ With pypolona, you can:
 
 ### Install standalone PyPolona app for macOS
 
-[Download the standalone PyPolona DMG for macOS](./dist/pypolona.dmg), install it and double-click the icon to open the GUI.
+[Download the standalone PyPolona DMG for macOS](https://github.com/twardoch/pypolona/raw/master/download/pypolona-mac.dmg), install it and double-click the icon to open the GUI.
 
-### Install with Python on macOS or Windows
+### Install standalone PyPolona app for Windows
+
+[Download the standalone PyPolona ZIP for Windows](https://github.com/twardoch/pypolona/raw/master/download/pypolona-win.zip), unzip it, double-click the icon to open the GUI. (You may need 64-bit Windows to run this).
+
+### Install pypolona Python package on macOS or Windows
 
 If you have Python 3.8+, you can install the Python version with `python3 -m pip install pypolona`.
 
 ## Running the graphical PyPolona app
 
-- If you installed the standalone DMG on macOS, just double-click `/Applications/PyPolona.app`
+- If you installed the standalone app on macOS, just double-click `/Applications/PyPolona.app`
+- If you installed the standalone app on Windows, just double-click `pypolona.exe`
 - If you installed the Python version, run `ppolona` or `python3 -m pypolona`
 
 ## Running the CLI
