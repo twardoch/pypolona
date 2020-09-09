@@ -16,7 +16,7 @@ With pypolona, you can:
 
 ### Install standalone PyPolona app for macOS
 
-[Download the standalone PyPolona DMG for macOS](https://github.com/twardoch/pypolona/raw/master/download/pypolona-mac.dmg), install it and double-click the icon to open the GUI.
+[Download the standalone PyPolona DMG for macOS](https://github.com/twardoch/pypolona/raw/master/download/pypolona-mac.dmg), install it (drag to the `/Applications` folder). Then Ctrl+click the icon and choose Open, then click Open to open the GUI. Later, you can just double-click the icon.
 
 ### Install standalone PyPolona app for Windows
 
