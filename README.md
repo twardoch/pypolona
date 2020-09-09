@@ -89,7 +89,7 @@ Download options:
 
 ### Building on macOS
 
-Install Homebrew
+In `Terminal.app`, install Homebrew:
 
 ```
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)";
@@ -106,11 +106,12 @@ dmgbuild -s dmgbuild_settings.py "PyPolona" "download/pypolona-mac.dmg";
 
 ### Building on Windows
 
-Install [UPX](https://upx.github.io/) in a location accessible in PATH. Then:
+Install [UPX](https://upx.github.io/) in a location accessible in PATH. Then run `cmd.exe` and in the command-line:
 
 ```
-pip3 install --user --upgrade .[dev];
-pyinstaller -y app/pyinstaller-win.spec;
+pip3 install --user --upgrade .[dev]
+pyinstaller -y app/pyinstaller-win.spec
+del download/pypolona-win.zip
 powershell "Compress-Archive dist/pypolona.exe download/pypolona-win.zip"
 ```
 
