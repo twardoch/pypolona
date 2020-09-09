@@ -16,12 +16,15 @@ With pypolona, you can:
 
 ### Standalone app
 
-<ul class="downloads">
-          <li><a href="https://github.com/twardoch/pypolona/raw/master/download/pypolona-mac.dmg">Download <strong>DMG for macOS</strong></a></li>
-          <li><a href="https://github.com/twardoch/pypolona/raw/master/download/pypolona-win.zip">Download <strong>ZIP for Windows</strong></a></li>
-</ul>
+#### macOS
+
+<a class="github-button btn btn-primary" href="https://github.com/twardoch/pypolona/raw/master/download/pypolona-mac.dmg" data-color-scheme="no-preference: dark; light: dark; dark: dark;" data-icon="octicon-download" data-size="large" aria-label="Download DMG for macOS">Download DMG for macOS</a>
 
 On **macOS**, double-click the downloaded DMG, drag the icon to the `/Applications` folder. Then Ctrl+click the icon and choose Open, then click Open to open the GUI. Later, you can just double-click the icon. If the app does not run, double-click again.
+
+#### Windows
+
+<a class="github-button btn btn-primary" href="https://github.com/twardoch/pypolona/raw/master/download/pypolona-win.zip" data-color-scheme="no-preference: dark; light: dark; dark: dark;" data-icon="octicon-download" data-size="large" aria-label="Download ZIP for Windows">Download ZIP for Windows</a>
 
 On **Windows**, unzip the downloaded ZIP, double-click the pypolona.exe icon to open the app. You need 64-bit Windows to run this.
 
