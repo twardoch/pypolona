@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 '''
-    yaplon
-    ------
+    ppolona
+    -------
     Copyright (c) 2020 Adam Twardoch <adam+github@twardoch.com>
-    MIT license. Python 3.7.
+    MIT license. Python 3.8+
 
     Image downloader for the polona.pl website of the Polish National Library
-    Usage: 'pypolona' for GUI, 'pypolona -h' for CLI
+    Usage: 'ppolona' for GUI, 'ppolona -h' for CLI
 '''
 
 import sys
@@ -77,16 +77,15 @@ else:
         advanced=True,
         tabbed_groups=True,
         navigation='Tabbed',
-        optional_cols=1,
-        image_dir=os.path.join(os.path.dirname(__file__), 'icons')
+        optional_cols=1
     )
 
 
 @gui_decorator
 def main():
     parser = ArgumentParser(
-        prog='pypolona',
-        description='Search in and download from Polona.pl. GUI: pypolona, CLI: pypolona -h'
+        prog='ppolona',
+        description='Search in and download from Polona.pl. GUI: ppolona, CLI: ppolona -h'
     )
 
     query_help = 'Search query or Advanced search query or IDs'

@@ -17,7 +17,8 @@ import os.path
 
 # .. Useful stuff ..............................................................
 
-application = defines.get('app', 'dist/PyPolona.app')
+application = defines.get('app', os.path.join(
+    'app', 'dist', 'PyPolona.app'))
 appname = os.path.basename(application)
 
 

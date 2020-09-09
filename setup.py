@@ -2,12 +2,18 @@
 # -*- coding: utf-8 -*-
 
 from setuptools import setup, find_packages
-from cx_Freeze import setup, Executable
-from os import path
+import os
 import re
 
-with open(path.join(path.abspath(path.dirname(__file__)), 'README.md')) as f:
-    long_description = f.read()
+readme_file = os.path.join(os.path.dirname(
+    os.path.abspath(__file__)), 'README.md')
+try:
+    from m2r import parse_from_file
+    readme = parse_from_file(readme_file)
+except ImportError:
+    # m2r may not be installed in user environment
+    with open(readme_file) as f:
+        readme = f.read()
 
 
 def get_version(*args):
@@ -35,8 +41,8 @@ def get_requirements(*args):
 
 def get_absolute_path(*args):
     """Transform relative pathnames into absolute pathnames."""
-    directory = path.dirname(path.abspath(__file__))
-    return path.join(directory, *args)
+    directory = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(directory, *args)
 
 
 setup(
@@ -50,14 +56,20 @@ setup(
     version=get_version(),
     license="MIT",
     description="Image downloader for the polona.pl website of the Polish National Library",
-    long_description=long_description,
-    long_description_content_type='',
+    long_description=readme,
+    long_description_content_type='text/x-rst',
     python_requires='>=3.7',
     install_requires=get_requirements('requirements.txt'),
     extras_require={
         'dev': [
-            'pyinstaller',
-            'dmgbuild'
+            'setuptools',
+            'wheel',
+            'pip',
+            'twine>=3.2.0',
+            'pyinstaller>=4.0',
+            'dmgbuild>=1.3.3',
+            'm2r>=0.2.1',
+            'py2exe>=0.9.2.2'
         ]
     },
     packages=find_packages(),
@@ -70,19 +82,6 @@ setup(
     keywords='polona jpeg downloader cli',
     entry_points='''
         [console_scripts]
-        pypolona=pypolona.__main__:main
-    ''',
-    options={
-        "build_exe": {
-            "packages": ["os"],
-            "excludes": ["tkinter"]
-        }
-    },
-    executables=[
-        Executable(
-            path.join("pypolona", "__main__.py"),
-            targetName="pypolona.exe",
-            base=None
-        )
-    ]
+        ppolona=pypolona.__main__:main
+    '''
 )

@@ -1,5 +1,7 @@
-orderedattrdict
-Gooey
-colored
-html2text
-yaplon
+orderedattrdict>=1.6.0
+Gooey>=1.0.4
+colored>=1.4.2
+html2text>=2020.1.16
+yaplon>=1.2.4
+python-dateutil>=2.8.1
+pywin32>=228 ; sys_platform == 'win32'

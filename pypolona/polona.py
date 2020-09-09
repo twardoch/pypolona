@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-    pypolona
-    --------
+    pypolona library
+    ----------------
     Copyright (c) 2020 Adam Twardoch <adam+github@twardoch.com>
-    MIT license. Python 3.7.
-
-    Image downloader for the polona.pl website of the Polish National Library
-    Usage: 'pypolona' for GUI, 'pypolona -h' for CLI
+    MIT license. Python 3.8+
 """
 
 import json
