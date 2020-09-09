@@ -12,15 +12,23 @@ if [ $# -ge 2 ]; then
 
   rm dist/*
 
+  echo "## Pushing to Github"
+  git add --all
+  git commit -am "PRE v$version: $text"
+  git pull
+  git push
+
   echo "## Preparing release"
   python3 setup.py sdist bdist_wheel
   brew install upx
   pyinstaller -y "app/pyinstaller-mac.spec"
   dmgbuild -s dmgbuild_settings.py "PyPolona" "download/pypolona-mac.dmg"
+  rm -rf "dist/ppolona"
+  rm -rf "dist/PyPolona.app"
 
   echo "## Pushing to Github"
   git add --all
-  git commit -am "v$version: $text"
+  git commit -am "MID v$version: $text"
   git pull
   git push
 
@@ -60,6 +68,12 @@ EOF
 
   python3 -m twine upload --verbose -c "$text" dist/*
   open "https://pypi.org/project/pypolona/"
+
+  echo "## Pushing to Github"
+  git add --all
+  git commit -am "RELEASE v$version: $text"
+  git pull
+  git push
 
 else
   echo $USAGE
