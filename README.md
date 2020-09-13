@@ -1,10 +1,10 @@
 # pypolona
 
-**[PyPolona](https://twardoch.github.io/pypolona/)** is a GUI (graphical) app that allows you to search in and download images from the [Polona.pl](https://polona.pl/) digital library. It also works as a `ppolona` CLI (command-line) tool. And it’s a Python package available from [PyPI](https://pypi.org/project/pypolona/. )
+**[PyPolona](https://twardoch.github.io/pypolona/)** is a free and open-source GUI (graphical) app that allows you to search in and download images from the [Polona.pl](https://polona.pl/) digital library. It also works as a `ppolona` CLI (command-line) tool. And it’s a Python package available from [PyPI](https://pypi.org/project/pypolona/). The source is on [Github](https://github.com/twardoch/pypolona).
 
 **Polona.pl** provides digitized books, magazines, graphics, maps, music, fliers and manuscripts from collections of the National Library of Poland and co-operating institutions.
 
-With pypolona, you can:
+With PyPolona, you can:
 
 - search Polona
 - print or save the search results as a list of URLs, a YAML file, a JSON file and a simple list of Polona document IDs
@@ -81,6 +81,8 @@ In **number of pages**, you can limit the maximum number of pages that the app d
 
 ## Using the CLI
 
+_Note: the CLI is `ppolona`, not `pypolona`_
+
 - If you installed the standalone DMG on macOS, use the CLI via `/Applications/PyPolona.app/Contents/MacOS/ppolona -h`
 - If you installed the Python version, run `ppolona -h` or `python3 -m pypolona -h`
 - Command-line options:
@@ -139,30 +141,19 @@ The [Polona](https://polona.pl/) is a bit overcomplicated to use, but fortunatel
 
 ### Building on macOS
 
-In `Terminal.app`, install Homebrew:
-
 ```
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)";
-```
-
-Then:
-
-```
-brew install upx;
-pip3 install --user --upgrade .[dev];
-pyinstaller -y app/pyinstaller-mac.spec;
-dmgbuild -s dmgbuild_settings.py "PyPolona" "download/pypolona-mac.dmg";
+./macdeploy prep && ./macdeploy build
 ```
 
 ### Building on Windows
 
-Install [UPX](https://upx.github.io/) in a location accessible in PATH. Then run `cmd.exe` and in the command-line:
+1. Install Python 3.8 from [Python.org](https://www.python.org/) (not the Windows Store!)
+2. Install [Inno Setup](https://jrsoftware.org/isinfo.php)
 
 ```
 pip3 install --user --upgrade .[dev]
-pyinstaller -y app/pyinstaller-win.spec
-del download/pypolona-win.zip
-powershell "Compress-Archive dist/pypolona.exe download/pypolona-win.zip"
+python -m PyInstaller --distpath="app/build/dist-win" --workpath="app/build" -y "app/pyinstaller-win.spec"
+"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /dMyAppVersion="1.1.7" app/pypolona.iss /Q
 ```
 
 ## License and Copyright
