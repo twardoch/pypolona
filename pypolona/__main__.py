@@ -38,7 +38,7 @@ DESCRIPTION = 'Search in and download from Polona.pl. GUI: Help › %s Help. CLI
 @ezgooey(
     advanced=True,
     auto_start=False,
-    default_size=(700, 640),
+    default_size=(800, 600),
     disable_progress_bar_animation=False,
     disable_stop_button=False,
     group_by_type=True,
@@ -223,7 +223,7 @@ def get_parser():
         type=int,
         default=0,
         metavar='num_pages',
-        help='Maximum number of pages to download per doc (0: all)',
+        help='Max number of pages per doc to download (0: all)',
         gooey_options={
             'show_label': False,
             'full_width': False
