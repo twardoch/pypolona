@@ -250,7 +250,7 @@ function all() {
   prep
   install
   build
-  #publish "$1"
+  publish "$1"
 }
 
 function main() {

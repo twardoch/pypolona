@@ -38,12 +38,10 @@ def get_parser():
         description='Search in and download from Polona.pl. GUI: ppolona, CLI: ppolona -h'
     )
 
-    query_help = 'Search query or Advanced search query or IDs'
+    query_help = 'query is a Polona.pl URL unless you choose search, advanced or ids'
 
     parser_q = parser.add_argument_group('Input')
     parser_q.add_argument(
-        '-q',
-        '--query',
         nargs='+',
         dest='query',
         type=str,
@@ -69,8 +67,8 @@ def get_parser():
     )
     command.add_argument(
         '-A',
-        '--advanced-search',
-        dest='search_advanced',
+        '--advanced',
+        dest='advanced',
         action='store_true',
         help='Query is advanced search query. field:value OR field:value AND (field:value OR field:value). Allowed '
              'fields are: title, author, keywords, publication_place, publisher, frequency, sources, call_number, '

@@ -13,6 +13,7 @@ import os.path
 import requests
 import dateutil.parser
 import urllib.parse
+import re
 import html2text
 from yaplon import oyaml
 from orderedattrdict import AttrDict as ad
@@ -29,17 +30,26 @@ class Polona(object):
         self.dldir = None
         if self.o.ids:
             self.ids = self.o.query
-        elif self.o.search or self.o.search_advanced:
+        elif self.o.search or self.o.advanced:
             self.search()
             if self.o.download:
                 if self.o.output:
                     self.save_search_results()
             else:
                 self.save_search_results()
+        else:
+            self.parse_urls(self.o.query)
         if self.o.download:
             self.download()
             log.success('Finished downloading into file://%s' %
                         self.o.download_dir)
+
+    def parse_urls(self, urls):
+        RE_URL = r"^https://polona\.pl/item/.*?,([A-Za-z0-9]+)/.*"
+        for url in urls:
+            mo = re.search(RE_URL, url, re.M)
+            if mo:
+                self.ids.append(mo.group(1))
 
     def _requests_encode_dict(self, dic, name):
         url = ''
@@ -63,7 +73,7 @@ class Polona(object):
             'sort': self.o.sort,
             'size': 150,
         }
-        if self.o.search_advanced:
+        if self.o.advanced:
             params['advanced'] = 1
         url = 'https://polona.pl/api/entities/'
         urlparams = urllib.parse.urlencode(
