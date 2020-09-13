@@ -6,20 +6,16 @@
     Copyright (c) 2020 Adam Twardoch <adam+github@twardoch.com>
     MIT license. Python 3.8+
 
-    Image downloader for the polona.pl website of the Polish National Library
+    Search in and download from Polona.pl
     Usage: 'ppolona' for GUI, 'ppolona -h' for CLI
 """
+
+import pathlib
 
 try:
     from .polona import *
 except ImportError:
     from pypolona.polona import *
-import pathlib
-try:
-    import gooey
-except ImportError:
-    gooey = None
-
 try:
     from . import *
 except ImportError:
@@ -30,12 +26,53 @@ from ezgooey.ez import *
 logging.init(level=logging.INFO)
 log = logging.logger('pypolona')
 
+GUI_NAME='PyPolona'
+CLI_NAME='ppolona'
+DESCRIPTION = 'Search in and download from Polona.pl. GUI: Help › %s Help. CLI: %s -h' % (GUI_NAME, CLI_NAME)
 
-@ezgooey
+
+@ezgooey(
+    advanced=True,
+    auto_start=False,
+    default_size=(800, 600),
+    disable_progress_bar_animation=False,
+    disable_stop_button=False,
+    group_by_type=True,
+    header_height=80,
+    hide_progress_msg=False,
+    monospace_display=False,
+    navigation='Tabbed',
+    optional_cols=1,
+    program_description=None,
+    program_name=GUI_NAME,
+    progress_expr=None,
+    progress_regex=None,
+    required_cols=1,
+    richtext_controls=True,
+    suppress_gooey_flag=True,
+    tabbed_groups=True,
+    target=None,
+    use_legacy_titles=True,
+    menu=[{
+        'name' : 'Help',
+        'items': [{
+            'type'       : 'AboutDialog',
+            'menuTitle'  : 'About',
+            'name'       : GUI_NAME,
+            'description': 'Click the link for more info',
+            'website'    : 'https://twardoch.github.io/pypolona/',
+            'license'    : 'MIT'
+        }, {
+            'type'     : 'Link',
+            'menuTitle': '%s Help' % (GUI_NAME),
+            'url'      : 'https://twardoch.github.io/pypolona/'
+        }]
+    }]
+)
 def get_parser():
     parser = ArgumentParser(
         prog='ppolona',
-        description='Search in and download from Polona.pl. GUI: ppolona, CLI: ppolona -h'
+        description=DESCRIPTION
     )
 
     query_help = 'query is a Polona.pl URL unless you choose search, advanced or ids'

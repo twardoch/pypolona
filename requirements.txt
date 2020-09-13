@@ -1,6 +1,6 @@
 orderedattrdict>=1.6.0
 Gooey>=1.0.4
-ezgooey>=1.0.3
+ezgooey>=1.2.0
 colored>=1.4.2
 html2text>=2020.1.16
 yaplon>=1.2.4
