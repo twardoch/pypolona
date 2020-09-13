@@ -20,13 +20,17 @@ try:
     from . import *
 except ImportError:
     from pypolona import *
+try:
+    from .__init__ import __version__ as version
+except ImportError:
+    from pypolona.__init__ import __version__ as version
 
 from ezgooey.ez import *
 
 logging.init(level=logging.INFO)
 log = logging.logger('pypolona')
 
-GUI_NAME='PyPolona'
+GUI_NAME='PyPolona %s' % (version)
 CLI_NAME='ppolona'
 DESCRIPTION = 'Search in and download from Polona.pl. GUI: Help › %s Help. CLI: %s -h' % (GUI_NAME, CLI_NAME)
 
@@ -34,14 +38,13 @@ DESCRIPTION = 'Search in and download from Polona.pl. GUI: Help › %s Help. CLI
 @ezgooey(
     advanced=True,
     auto_start=False,
-    default_size=(800, 600),
+    default_size=(700, 640),
     disable_progress_bar_animation=False,
     disable_stop_button=False,
     group_by_type=True,
+    header_show_title=True,
     header_height=80,
     hide_progress_msg=False,
-    monospace_display=False,
-    navigation='Tabbed',
     optional_cols=1,
     program_description=None,
     program_name=GUI_NAME,
@@ -49,6 +52,8 @@ DESCRIPTION = 'Search in and download from Polona.pl. GUI: Help › %s Help. CLI
     progress_regex=None,
     required_cols=1,
     richtext_controls=True,
+    show_failure_modal=True,
+    show_success_modal=False,
     suppress_gooey_flag=True,
     tabbed_groups=True,
     target=None,
@@ -64,7 +69,7 @@ DESCRIPTION = 'Search in and download from Polona.pl. GUI: Help › %s Help. CLI
             'license'    : 'MIT'
         }, {
             'type'     : 'Link',
-            'menuTitle': '%s Help' % (GUI_NAME),
+            'menuTitle': '%s Documentation' % (GUI_NAME),
             'url'      : 'https://twardoch.github.io/pypolona/'
         }]
     }]
@@ -77,49 +82,77 @@ def get_parser():
 
     query_help = 'query is a Polona.pl URL unless you choose search, advanced or ids'
 
-    parser_q = parser.add_argument_group('Input')
+    parser_q = parser.add_argument_group(
+        'Input',
+        gooey_options={
+            'show_border': True,
+            'columns'    : 2,
+            'margin_top' : 0
+            }
+        )
     parser_q.add_argument(
         nargs='+',
         dest='query',
         type=str,
         metavar='query',
-        help=query_help
+        help=query_help,
+        widget='Textarea',
+        gooey_options={
+            'height': 120,
+        }
     )
 
-    parser_q.add_argument(
-        '-D',
-        '--download',
-        dest='download',
-        action='store_true',
-        help='Download images from results. See Download options'
+    command = parser_q.add_mutually_exclusive_group(
+        required=False
     )
-
-    command = parser_q.add_mutually_exclusive_group(required=False)
     command.add_argument(
         '-S',
         '--search',
         dest='search',
         action='store_true',
-        help='Query is search query. See Search options'
+        help='Query is search query, see Options',
+        gooey_options={
+            'show_help': False,
+        }
     )
     command.add_argument(
         '-A',
         '--advanced',
         dest='advanced',
         action='store_true',
-        help='Query is advanced search query. field:value OR field:value AND (field:value OR field:value). Allowed '
-             'fields are: title, author, keywords, publication_place, publisher, frequency, sources, call_number, '
-             'entire_description, content '
+        help='Query is advanced search query, see Documentation',
+        gooey_options={
+            'show_help': False,
+        }
     )
     command.add_argument(
         '-I',
         '--ids',
         dest='ids',
         action='store_true',
-        help='Query is space-separated IDs'
+        help='Query is space-separated IDs',
+        gooey_options={
+            'show_help': False,
+        }
+    )
+    parser_q.add_argument(
+        '-D',
+        '--download',
+        dest='download',
+        action='store_true',
+        help='Download images from results, see Options',
+        gooey_options={
+            'show_label': False,
+        }
     )
 
-    parser_s = parser.add_argument_group('Search options')
+    parser_s = parser.add_argument_group(
+        'Options',
+        gooey_options={
+        'show_border'   : True,
+        'columns'       : 2,
+        'margin_top'    : 0
+    })
     parser_s.add_argument(
         '-l',
         '--lang',
@@ -127,7 +160,10 @@ def get_parser():
         dest='search_languages',
         type=str,
         metavar='language',
-        help='Space-separated languages: polski angielski niemiecki...'
+        help='Space-separated languages: polski angielski niemiecki...',
+        gooey_options={
+            'show_label': False,
+        }
     )
     parser_s.add_argument(
         '-s',
@@ -137,7 +173,10 @@ def get_parser():
         choices=['score desc', 'date desc',
                  'date asc', 'title asc', 'creator asc'],
         default='score desc',
-        help='Sort search results by score, date, title or creator (descending or ascending)'
+        help='Sort search results by score, date, title or creator (descending or ascending)',
+        gooey_options={
+            'show_label': False,
+        }
     )
     parser_s.add_argument(
         '-f',
@@ -146,7 +185,11 @@ def get_parser():
         type=str,
         choices=['ids', 'urls', 'yaml', 'json'],
         default='ids',
-        help='Output search results in format'
+        help='Output search results in format',
+        gooey_options={
+            'show_label': False,
+            'full_width': False
+        }
     )
     parser_s.add_argument(
         '-o',
@@ -154,35 +197,47 @@ def get_parser():
         dest='output',
         type=str,
         widget='FileSaver',
-        metavar='save results',
-        help='Save search results to this file'
+        metavar='results_file',
+        help='Save search results to this file',
+        gooey_options={
+            'show_label': False,
+        }
     )
-    parser_d = parser.add_argument_group('Download options')
-    parser_d.add_argument(
+    parser_s.add_argument(
         '-d',
         '--download-dir',
         dest='download_dir',
         type=str,
         default=str(pathlib.Path.home() / 'Desktop' / 'polona'),
         widget='DirChooser',
-        metavar='download to folder',
-        help='Download images into subfolders in this folder'
+        metavar='download_folder',
+        help='Download images into subfolders in this folder',
+        gooey_options={
+            'show_label': False,
+        }
     )
-    parser_d.add_argument(
-        '-O',
-        '--overwrite',
-        dest='overwrite',
-        action='store_true',
-        help='Overwrite if folder exists'
-    )
-    parser_d.add_argument(
+    parser_s.add_argument(
         '-M',
         '--max-pages',
         dest='max_pages',
         type=int,
         default=0,
-        metavar='number of pages',
-        help='Maximum number of pages to download per doc (0: all)'
+        metavar='num_pages',
+        help='Maximum number of pages to download per doc (0: all)',
+        gooey_options={
+            'show_label': False,
+            'full_width': False
+        }
+    )
+    parser_s.add_argument(
+        '-O',
+        '--overwrite',
+        dest='overwrite',
+        action='store_true',
+        help='Overwrite subfolders if they exist',
+        gooey_options={
+            'show_label': False,
+        }
     )
     return parser
 

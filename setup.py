@@ -31,9 +31,12 @@ def get_requirements(*args):
         for line in handle:
             # Strip comments.
             line = re.sub(r'^#.*|\s#.*', '', line)
+            # Add git handles
+            line = re.sub(r'git\+(.*?)@(.*?)#egg=([^\-]+)($|([\-]?.*))', r'\3 @ git+\1@\2#egg=\3\4', line)
             # Ignore empty lines
             if line and not line.isspace():
                 requirements.add(re.sub(r'\s+', '', line))
+    print(requirements)
     return sorted(requirements)
 
 
