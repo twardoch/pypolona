@@ -167,8 +167,7 @@ function buildwin() {
   pp "## Building Win EXE installer"
   wine "$ISSEXE" /dMyAppVersion="$VER" app/pypolona.iss /Q
   pp "## Building Win ZIP"
-  rm -rf "download/pypolona-win.zip"
-  zip "download/pypolona-win.zip" "app/build/dist-win/setup_pypolona.exe"
+  rm -rf "download/pypolona-win.zip" && zip -j "download/pypolona-win.zip" "app/build/dist-win/setup_pypolona.exe"
 }
 
 function build() {
