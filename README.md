@@ -34,13 +34,15 @@ If you have Python 3.8+, you can install the Python version with `python3 -m pip
 
 ### Input tab
 
-In the Input tab: 
+![Input tab](https://raw.githubusercontent.com/twardoch/pypolona/master/docs/img/pypolona1.png)
+
+In the Input tab:
 
 In **query**, you can paste one or more URLs from Polona.pl (space-separated)
 
 Turn on **download** to download the images from the queried result, go to the **Download options** tab to customize the download location and set a max limit
 
-In **Choose One** you can change what the **query** field means: 
+In **Choose One** you can change what the **query** field means:
 
 - **search**: choose this and in the **query** field, enter a simple search query like `adam mickiewicz`; go to the **Search options** tab to customize
 - **advanced**: you can use the advanced query syntax, see [documentation](https://polona.pl/api/entities/); go to the **Search options** tab to customize
@@ -48,21 +50,34 @@ In **Choose One** you can change what the **query** field means:
 
 ### Search options tab
 
+![Search options tab](https://raw.githubusercontent.com/twardoch/pypolona/master/docs/img/pypolona2.png)
+
 In **language**, you can enter a space-separated list of languages like Polona uses them, e.g. `polski niemiecki angielski`. Use the sidebar on the [Polona](https://polona.pl) website to find them.
 
 In **sort**, you can sort the results by score, date, title or creator, in ascending or descending order.
 
-In **format**, you can choose a format in which search results will be output. If you choose ids, you click **Restart** and then paste them back into the query field. 
+In **format**, you can choose a format in which search results will be output. If you choose ids, you click **Restart** and then paste them back into the query field.
 
 In **save results**, you can optionally save the search results into the file.
 
 ### Download options tab
 
-In **download to folder**, you can choose into which folder the app will download the images. By default it uses the `polona` subfolder on your desktop. When you start the download, the app will create subfolders inside, one per document. The folder names start with the publication year, then part of the title, then the ID. 
+![Download options tab](https://raw.githubusercontent.com/twardoch/pypolona/master/docs/img/pypolona3.png)
+
+In **download to folder**, you can choose into which folder the app will download the images. By default it uses the `polona` subfolder on your desktop. When you start the download, the app will create subfolders inside, one per document. The folder names start with the publication year, then part of the title, then the ID.
 
 Turn on **overwrite**, and the app will re-download previously downloaded documents. If off, it will skip them.
 
+In **number of pages**, you can limit the maximum number of pages that the app downloads for each document. This is useful for test downloads, since some documents may have hundreds or pages.
 
+### Buttons
+
+- Click **Start** to start the search or download.
+- Click **Cancel** to close the app.
+- If you’ve started and the search or download has finished, you can:
+  - click **Restart** to start the search or download with the same settings
+  - click **Edit** to go back to change the settings, so you can start another search or download.
+- If the download is running, you can click **Stop** to interrupt it.
 
 ## Using the CLI
 
@@ -71,8 +86,10 @@ Turn on **overwrite**, and the app will re-download previously downloaded docume
 - Command-line options:
 
 ```
-usage: ppolona [-h] [-q query [query ...]] [-D] [-S | -A | -I] [-l [language [language ...]]] [-s {score desc,date desc,date asc,title asc,creator asc}]
-               [-f {ids,urls,yaml,json}] [-o save results] [-d download to folder] [-O] [-M number of pages]
+usage: ppolona [-h] [-D] [-S | -A | -I] [-l [language [language ...]]]
+               [-s {score desc,date desc,date asc,title asc,creator asc}] [-f {ids,urls,yaml,json}] [-o save results]
+               [-d download to folder] [-O] [-M number of pages]
+               query [query ...]
 
 Search in and download from Polona.pl. GUI: ppolona, CLI: ppolona -h
 
@@ -80,13 +97,12 @@ optional arguments:
   -h, --help            show this help message and exit
 
 Input:
-  -q query [query ...], --query query [query ...]
-                        Search query or Advanced search query or IDs
+  query                 query is a Polona.pl URL unless you choose search, advanced or ids
   -D, --download        Download images from results. See Download options
   -S, --search          Query is search query. See Search options
-  -A, --advanced-search
-                        Query is advanced search query. field:value OR field:value AND (field:value OR field:value). Allowed fields are: title, author,
-                        keywords, publication_place, publisher, frequency, sources, call_number, entire_description, content
+  -A, --advanced        Query is advanced search query. field:value OR field:value AND (field:value OR field:value). Allowed
+                        fields are: title, author, keywords, publication_place, publisher, frequency, sources, call_number,
+                        entire_description, content
   -I, --ids             Query is space-separated IDs
 
 Search options:
