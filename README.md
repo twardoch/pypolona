@@ -141,6 +141,8 @@ The [Polona](https://polona.pl/) is a bit overcomplicated to use, but fortunatel
 
 ### Building on macOS
 
+To build the Python package, the Mac DMG and the Win EXE (via Wine):
+
 ```
 ./macdeploy prep && ./macdeploy build
 ```
