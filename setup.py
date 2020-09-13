@@ -7,24 +7,22 @@ import re
 
 readme_file = os.path.join(os.path.dirname(
     os.path.abspath(__file__)), 'README.md')
-try:
-    from m2r import parse_from_file
-    readme = parse_from_file(readme_file)
-except ImportError:
-    # m2r may not be installed in user environment
-    with open(readme_file) as f:
-        readme = f.read()
+with open(readme_file) as f:
+    readme = f.read()
 
 
 def get_version(*args):
-    verstrline = open("pypolona/__init__.py", "rt").read()
-    VSRE = r"^__version__ = ['\"]([^'\"]*)['\"]"
-    mo = re.search(VSRE, verstrline, re.M)
-    if mo:
-        return mo.group(1)
-    else:
-        return "undefined"
-
+    ver = "undefined"
+    import pypolona.__init__
+    try:
+        ver = pypolona.__init__.__version__
+    except AttributeError:
+        verstrline = open("pypolona/__init__.py", "rt").read()
+        VSRE = r"^__version__ = ['\"]([^'\"]*)['\"]"
+        mo = re.search(VSRE, verstrline, re.M)
+        if mo:
+            ver = mo.group(1)
+    return ver
 
 def get_requirements(*args):
     """Get requirements from pip requirement files."""
@@ -57,19 +55,14 @@ setup(
     license="MIT",
     description="Image downloader for the polona.pl website of the Polish National Library",
     long_description=readme,
-    long_description_content_type='text/x-rst',
+    long_description_content_type='text/markdown',
     python_requires='>=3.7',
     install_requires=get_requirements('requirements.txt'),
     extras_require={
         'dev': [
-            'setuptools',
-            'wheel',
-            'pip',
             'twine>=3.2.0',
             'pyinstaller>=4.0',
-            'dmgbuild>=1.3.3',
-            'm2r>=0.2.1',
-            'py2exe>=0.9.2.2'
+            'dmgbuild>=1.3.3; sys_platform == "darwin"'
         ]
     },
     packages=find_packages(),

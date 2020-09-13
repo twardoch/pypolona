@@ -10,22 +10,15 @@
 import json
 import sys
 import os.path
-from typing import OrderedDict as od
 import requests
 import dateutil.parser
 import urllib.parse
 import html2text
-try:
-    from yaplon import oyaml
-except ImportError:
-    print('pip3 install --upgrade yaplon')
-try:
-    from orderedattrdict import AttrDict as ad
-except ImportError:
-    print('pip3 install --upgrade orderedattrdict')
+from yaplon import oyaml
+from orderedattrdict import AttrDict as ad
 
 from . import *
-
+log = logging.logger('pypolona')
 
 class Polona(object):
     def __init__(self, **opts):

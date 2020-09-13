@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-'''
+"""
     ppolona
     -------
     Copyright (c) 2020 Adam Twardoch <adam+github@twardoch.com>
@@ -8,81 +8,31 @@
 
     Image downloader for the polona.pl website of the Polish National Library
     Usage: 'ppolona' for GUI, 'ppolona -h' for CLI
-'''
+"""
 
-import sys
-from typing import OrderedDict
-from .polona import *
-import argparse
+try:
+    from .polona import *
+except ImportError:
+    from pypolona.polona import *
 import pathlib
-from yaplon import oyaml
 try:
     import gooey
 except ImportError:
     gooey = None
 
-from . import *
-
 try:
-    from orderedattrdict import AttrDict
+    from . import *
 except ImportError:
-    print('pip3 install --user --upgrade orderedattrdict')
+    from pypolona import *
+
+from ezgooey.ez import *
+
+logging.init(level=logging.INFO)
+log = logging.logger('pypolona')
 
 
-class Unbuffered(object):
-    def __init__(self, stream):
-        self.stream = stream
-
-    def write(self, data):
-        self.stream.write(data)
-        self.stream.flush()
-
-    def writelines(self, datas):
-        self.stream.writelines(datas)
-        self.stream.flush()
-
-    def __getattr__(self, attr):
-        return getattr(self.stream, attr)
-
-
-sys.stdout = Unbuffered(sys.stdout)
-
-
-def flex_add_argument(f):
-    '''Make the add_argument accept (and ignore) the widget option.'''
-
-    def f_decorated(*args, **kwargs):
-        kwargs.pop('widget', None)
-        return f(*args, **kwargs)
-
-    return f_decorated
-
-
-# Monkey-patching a private class…
-argparse._ActionsContainer.add_argument = flex_add_argument(
-    argparse.ArgumentParser.add_argument)
-
-# Do not run GUI if it is not available or if command-line arguments are given.
-if gooey is None or len(sys.argv) > 1:
-    ArgumentParser = argparse.ArgumentParser
-
-    def gui_decorator(f):
-        return f
-else:
-    ArgumentParser = gooey.GooeyParser
-    gui_decorator = gooey.Gooey(
-        program_name='PyPolona',
-        suppress_gooey_flag=True,
-        richtext_controls=True,
-        advanced=True,
-        tabbed_groups=True,
-        navigation='Tabbed',
-        optional_cols=1
-    )
-
-
-@gui_decorator
-def main():
+@ezgooey
+def get_parser():
     parser = ArgumentParser(
         prog='ppolona',
         description='Search in and download from Polona.pl. GUI: ppolona, CLI: ppolona -h'
@@ -122,7 +72,9 @@ def main():
         '--advanced-search',
         dest='search_advanced',
         action='store_true',
-        help='Query is advanced search query. field:value OR field:value AND (field:value OR field:value). Allowed fields are: title, author, keywords, publication_place, publisher, frequency, sources, call_number, entire_description, content'
+        help='Query is advanced search query. field:value OR field:value AND (field:value OR field:value). Allowed '
+             'fields are: title, author, keywords, publication_place, publisher, frequency, sources, call_number, '
+             'entire_description, content '
     )
     command.add_argument(
         '-I',
@@ -197,6 +149,11 @@ def main():
         metavar='number of pages',
         help='Maximum number of pages to download per doc (0: all)'
     )
+    return parser
+
+
+def main():
+    parser = get_parser()
     opts = parser.parse_args()
     if opts:
         opts = vars(opts)
