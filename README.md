@@ -12,13 +12,15 @@ With PyPolona, you can:
 
 The PyPolona GUI version is made from the command-line version, and uses the same settings as the `ppolona` tool.
 
+> Remember: to **run the GUI on macOS for the first time**, _Ctrl+click_ the DMG, choose _Open_, then _Open_, then drag to Applications folder, there _Ctrl+click_ the app icon, choose _Open_, then _Open_.
+
 ## Install standalone PyPolona app
 
 ### <a class="github-button btn btn-primary" href="https://github.com/twardoch/pypolona/raw/master/download/pypolona-mac.dmg" data-color-scheme="no-preference: dark; light: dark; dark: dark;" data-icon="octicon-download" data-size="large" aria-label="Download DMG for macOS">Download DMG for macOS</a>
 
-On **macOS**, double-click the downloaded DMG, drag the icon to the `/Applications` folder.
+On **macOS**, **Ctrl+click** the downloaded DMG, choose **Open**, then **Open** again, then drag the icon to the `/Applications` folder.
 
-When you **run the app for the first time**, **Ctrl**+click the icon and choose **Open**, then click **Open**. Later, you can just double-click the icon. If the app does not run, double-click again.
+When you **run the app for the first time**, **Ctrl+click** the Polona.app, choose **Open**, then click **Open**. Later, you can just double-click the icon. If the app does not run, double-click again.
 
 ### <a class="github-button btn btn-primary" href="https://github.com/twardoch/pypolona/raw/master/download/pypolona-win.zip" data-color-scheme="no-preference: dark; light: dark; dark: dark;" data-icon="octicon-download" data-size="large" aria-label="Download ZIP for Windows">Download ZIP for Windows</a>
 
