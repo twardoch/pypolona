@@ -91,11 +91,11 @@ _Note: the CLI is `ppolona`, not `pypolona`_
 - Command-line options:
 
 ```
-usage: ppolona [-h] [-S | -A | -I] [-D] [-l [language [language ...]]] [-s {score desc,date desc,date asc,title asc,creator asc}]
-               [-f {ids,urls,yaml,json}] [-o results_file] [-d download_folder] [-M num_pages] [-O]
+usage: ppolona [-h] [-S | -A | -I] [-D] [-i] [-l [language [language ...]]] [-s {score desc,date desc,date asc,title asc,creator asc}]
+               [-f {ids,urls,yaml,json}] [-o results_file] [-d download_folder] [-M num_pages] [--skip]
                query [query ...]
 
-Search in and download from Polona.pl. GUI: Help › PyPolona 1.4.1 Help. CLI: ppolona -h
+Search in and download from Polona.pl. GUI: Help › PyPolona 1.5.0 Help. CLI: ppolona -h
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -106,6 +106,7 @@ Input:
   -A, --advanced        Query is advanced search query, see Documentation
   -I, --ids             Query is space-separated IDs
   -D, --download        Download images from results, see Options
+  -i, --images          Download as JPEGs in a subfolder instead of one PDF
 
 Options:
   -l [language [language ...]], --lang [language [language ...]]
@@ -117,11 +118,15 @@ Options:
   -o results_file, --output results_file
                         Save search results to this file
   -d download_folder, --download-dir download_folder
-                        Download images into subfolders in this folder
+                        Download images into subfolders/PDFs in this folder
   -M num_pages, --max-pages num_pages
                         Max number of pages per doc to download (0: all)
-  -O, --overwrite       Overwrite subfolders if they exist
+  --skip                Skip existing subfolders/PDFs
 ```
+## Changelog
+
+- 1.5.0: -i saves each downloaded document as subfolder with images, otherwise as one PDF (with metadata), --skip instead of --overwrite flag
+- 1.0.0: Initial release
 
 ## More about Polona
 

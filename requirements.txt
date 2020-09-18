@@ -6,4 +6,6 @@ colored>=1.4.2
 html2text>=2020.1.16
 yaplon>=1.2.4
 python-dateutil>=2.8.1
+img2pdf>=0.4.0
+pikepdf>=1.19.3
 pywin32>=228 ; sys_platform == 'win32'

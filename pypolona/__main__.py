@@ -74,7 +74,10 @@ DESCRIPTION = 'Search in and download from Polona.pl. GUI: Help › %s Help. CLI
         }]
     }]
 )
-def get_parser():
+def gui():
+    return cli()
+
+def cli():
     parser = ArgumentParser(
         prog='ppolona',
         description=DESCRIPTION
@@ -145,7 +148,16 @@ def get_parser():
             'show_label': False,
         }
     )
-
+    parser_q.add_argument(
+        '-i',
+        '--images',
+        dest='images',
+        action='store_true',
+        help='Download as JPEGs in a subfolder instead of one PDF',
+        gooey_options={
+            'show_label': False,
+        }
+    )
     parser_s = parser.add_argument_group(
         'Options',
         gooey_options={
@@ -211,7 +223,7 @@ def get_parser():
         default=str(pathlib.Path.home() / 'Desktop' / 'polona'),
         widget='DirChooser',
         metavar='download_folder',
-        help='Download images into subfolders in this folder',
+        help='Download images into subfolders/PDFs in this folder',
         gooey_options={
             'show_label': False,
         }
@@ -230,11 +242,10 @@ def get_parser():
         }
     )
     parser_s.add_argument(
-        '-O',
-        '--overwrite',
-        dest='overwrite',
+        '--skip',
+        dest='skip',
         action='store_true',
-        help='Overwrite subfolders if they exist',
+        help='Skip existing subfolders/PDFs',
         gooey_options={
             'show_label': False,
         }
@@ -243,7 +254,7 @@ def get_parser():
 
 
 def main():
-    parser = get_parser()
+    parser = gui()
     opts = parser.parse_args()
     if opts:
         opts = vars(opts)
