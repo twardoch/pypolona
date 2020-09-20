@@ -18,20 +18,20 @@ The PyPolona GUI version is made from the command-line version, and uses the sam
 
 Current version is **1.6.0**.
 
-> #### 1.6.0
->
-> - unless you specify `--no-text-pdf`, PyPolona now downloads an additional PDF that has searchable text if it’s available
-> - `--skip` is now `--no-overwrite`
-> improved PDF metadata import, bugfixes
->
-> #### 1.5.0
->
-> - `-i` saves each downloaded document as subfolder with images, otherwise as one PDF (with metadata)
-> - `--skip` instead of `--overwrite` flag
->
-> #### 1.0.0
->
-> - initial release
+#### 1.6.0
+
+- unless you specify `--no-text-pdf`, PyPolona now downloads an additional PDF that has searchable text if it’s available
+- `--skip` is now `--no-overwrite`
+- improved PDF metadata import, bugfixes
+
+#### 1.5.0
+
+- `-i` saves each downloaded document as subfolder with images, otherwise as one PDF (with metadata)
+- `--skip` instead of `--overwrite` flag
+
+#### 1.0.0
+
+- initial release
 
 ## Install standalone PyPolona app
 
