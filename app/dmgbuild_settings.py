@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+import re
 import biplist
 import os.path
 
@@ -17,7 +18,18 @@ import os.path
 
 # .. Useful stuff ..............................................................
 
-application = defines.get('app', os.path.join('app', 'build', 'dist-mac', 'PyPolona.app'))
+def get_version(*args):
+    ver = ""
+    verstrline = open(os.path.join('..', 'pypolona', '__init__.py'), "rt").read()
+    VSRE = r"^__version__ = ['\"]([^'\"]*)['\"]"
+    mo = re.search(VSRE, verstrline, re.M)
+    if mo:
+        ver = mo.group(1)
+    return ver
+
+
+application = defines.get('app', os.path.join(
+    'build', 'dist-mac', 'PyPolona.app'))
 appname = os.path.basename(application)
 
 
@@ -34,10 +46,10 @@ def icon_from_app(app_path):
 # .. Basics ....................................................................
 
 # Uncomment to override the output filename
-# filename = 'test.dmg'
+filename = os.path.join('..','download','pypolona-mac.dmg')
 
 # Uncomment to override the output volume name
-# volume_name = 'Test'
+volume_name = 'PyPolona %s' % (get_version())
 
 
 # Volume format (see hdiutil create -help)

@@ -23,7 +23,7 @@ LicenseFile=..\LICENSE
 ; Uncomment the following line to run in non administrative install mode (install for current user only.)
 ;PrivilegesRequired=lowest
 OutputDir=build\dist-win
-OutputBaseFilename=setup_pypolona
+OutputBaseFilename=setup_pypolona_{#MyAppVersion}
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern

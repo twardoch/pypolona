@@ -17,7 +17,7 @@ def get_version(*args):
     try:
         ver = pypolona.__init__.__version__
     except AttributeError:
-        verstrline = open("pypolona/__init__.py", "rt").read()
+        verstrline = open(os.path.join('pypolona', '__init__.py'), "rt").read()
         VSRE = r"^__version__ = ['\"]([^'\"]*)['\"]"
         mo = re.search(VSRE, verstrline, re.M)
         if mo:
