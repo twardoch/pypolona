@@ -10,6 +10,12 @@ PYMAC="python3"
 PYWIN="wine py"
 VER=$(echo -e "import pypolona.__init__\nprint(pypolona.__init__.__version__)" | "$PYMAC")
 
+VER=$(
+  perl -lne \
+    "print \$1 if /^__version__ = ['\"]([^'\"]*)['\"]/" \
+    "pypolona/__init__.py"
+)
+
 function pp() {
   echo
   echo -e "[dist] $1"
@@ -143,7 +149,7 @@ function buildpy() {
   $PYMAC setup.py sdist bdist_wheel
 }
 
-function builddmg() {
+function buildmacdmg() {
   pp "## Building Mac DMG"
   cd "$dir/app"
   dmgbuild -s dmgbuild_settings.py '' ''
@@ -156,12 +162,20 @@ function buildmac() {
     --distpath="$cwd/app/build/dist-mac" \
     --workpath="$cwd/app/build" \
     -y "app/pyinstaller-mac.spec"
-  builddmg
+  buildmacdmg
   #rm -rf "$cwd/app/build/dist-mac"
 }
 
-function iss() {
+function buildwiniss() {
+  pp "## Building Win EXE installer"
   wine "$ISSEXE" /dMyAppVersion="$VER" app/pypolona.iss /Q
+}
+
+function buildwinzip() {
+  pp "## Building Win ZIP"
+  rm -rf "download/pypolona-win.zip" && zip -j \
+    "download/pypolona-win.zip" \
+    "app/build/dist-win/setup_pypolona_$VER.exe"
 }
 
 function buildwin() {
@@ -171,16 +185,12 @@ function buildwin() {
     --distpath="$cwd/app/build/dist-win" \
     --workpath="$cwd/app/build" \
     -y "app/pyinstaller-win.spec"
-  pp "## Building Win EXE installer"
-  wine "$ISSEXE" /dMyAppVersion="$VER" app/pypolona.iss /Q
-  pp "## Building Win ZIP"
-  rm -rf "download/pypolona-win.zip" && zip -j \
-    "download/pypolona-win.zip" \
-    "app/build/dist-win/setup_pypolona_$VER.exe"
+  buildwiniss
+  buildwinzip
 }
 
 function build() {
-  echo "## Pushing to Github"
+  pp "## Pushing to Github"
   git add --all
   git commit -am "Build: v$version: $text"
   git pull
@@ -194,7 +204,7 @@ function build() {
 function publish() {
   [ -z "$2" ] && text="update" || text="$2"
 
-  echo "## Pushing to Github"
+  pp "## Pushing to Github"
   git add --all
   git commit -am "Release: v$version: $text"
   git pull
@@ -227,7 +237,7 @@ function publish() {
 EOF
   }
 
-  echo "## Creating release $version for repo: $repo_full_name branch: $branch"
+  pp "## Creating release $version for repo: $repo_full_name branch: $branch"
   curl --data "$(generate_post_data)" "https://api.github.com/repos/$user/$repo/releases?access_token=$token"
 
   echo
@@ -237,7 +247,7 @@ EOF
   python3 -m twine upload --verbose -c "$text" dist/*
   open "https://pypi.org/project/pypolona/"
 
-  echo "## Pushing to Github"
+  pp "## Pushing to Github"
   git add --all
   git commit -am "Published: v$VER: $text"
   git pull
@@ -249,6 +259,13 @@ function init() {
   grealpath=$(getapp grealpath) || prep
   python3=$(getapp "$PYMAC") || prep
   cwd=$("$grealpath" "$dir")
+}
+
+function clean() {
+  pp "## Cleaning"
+  rm -rf "$cwd/build/*"
+  rm -rf "$cwd/dist/*"
+  rm -rf "$cwd/app/build/*"
 }
 
 function usage() {
@@ -265,6 +282,7 @@ function usage() {
 function all() {
   prep
   install
+  clean
   build
   publish "$1"
 }
@@ -282,13 +300,16 @@ function main() {
     exit $?
     ;;
   init) init ;;
+  clean) clean ;;
   prep) prep ;;
   preppy) preppy ;;
   install) install ;;
   build) build ;;
   buildpy) buildpy ;;
-  builddmg) builddmg ;;
+  buildmacdmg) buildmacdmg ;;
   buildmac) buildmac ;;
+  buildwiniss) buildwiniss ;;
+  buildwinzip) buildwinzip ;;
   buildwin) buildwin ;;
   publish) publish $@ ;;
   all) all $@ ;;
