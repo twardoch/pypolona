@@ -143,7 +143,7 @@ def cli():
         '--download',
         dest='download',
         action='store_true',
-        help='Download images from results, see Options',
+        help='Download found docs, see Options',
         gooey_options={
             'show_label': False,
         }
@@ -153,7 +153,7 @@ def cli():
         '--images',
         dest='images',
         action='store_true',
-        help='Download as JPEGs in a subfolder instead of one PDF',
+        help='Download JPEGs into subfolders instead of PDF',
         gooey_options={
             'show_label': False,
         }
@@ -223,7 +223,7 @@ def cli():
         default=str(pathlib.Path.home() / 'Desktop' / 'polona'),
         widget='DirChooser',
         metavar='download_folder',
-        help='Download images into subfolders/PDFs in this folder',
+        help='Save downloaded docs in this folder',
         gooey_options={
             'show_label': False,
         }
@@ -235,14 +235,25 @@ def cli():
         type=int,
         default=0,
         metavar='num_pages',
-        help='Max number of pages per doc to download (0: all)',
+        help='Download max pages per doc (0: all)',
         gooey_options={
             'show_label': False,
             'full_width': False
         }
     )
     parser_s.add_argument(
-        '--skip',
+        '-T',
+        '--no-text-pdf',
+        dest='textpdf_skip',
+        action='store_true',
+        help='Skip downloading searchable PDFs',
+        gooey_options={
+            'show_label': False,
+        }
+    )
+    parser_s.add_argument(
+        '-O',
+        '--no-overwrite',
         dest='skip',
         action='store_true',
         help='Skip existing subfolders/PDFs',

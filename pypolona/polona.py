@@ -12,15 +12,17 @@ import sys
 import os
 import os.path
 import requests
+import mimetypes
 import dateutil.parser
 import urllib.parse
 import re
-import tempfile
 import html2text
 from yaplon import oyaml
 from orderedattrdict import AttrDict as ad
 import img2pdf
 import pikepdf
+from lxml import etree
+import lxml2json
 
 from . import *
 
@@ -149,7 +151,58 @@ class Polona(object):
                 can_dl = True
         return can_dl
 
+    def _process_hit(self, hit):
+        hit.subdir = []
+        year = hit.date
+        if year:
+            hit.year = dateutil.parser.parse(year).year
+            hit.subdir.append('%s-' % hit.year)
+        hit.subdir.append(hit.slug[:64])
+        hit.subdir.append('-%s' % hit.id)
+        hit.subdir = '-'.join(hit.subdir)
+        hit.url = 'https://polona.pl/item/%s,%s/' % (
+            hit.slug, hit.id)
+        return hit
+
+    def _process_textpdf(self, hit):
+        return hit
+
+    def _process_dc(self, hit):
+        r = requests.get(hit.dc_url, stream=True)
+        if '.xml' in mimetypes.guess_all_extensions(
+                r.headers.get('content-type', '').split(';')[0]):
+            dc_root = lxml2json.convert(
+                etree.XML(r.content)[0],
+                ordered=True,
+                alwaysList=[
+                    ".//language",
+                    ".//country",
+                    ".//contributor",
+                    ".//creator",
+                    ".//subject",
+                    ".//tags",
+                ]
+            )
+            dc = dc_root \
+                .get('{http://www.w3.org/1999/02/22-rdf-syntax-ns#}Description', {})
+            if len(dc.keys()):
+                hit.dc = dc
+        return hit
+
+    def _process_resources(self, hit):
+        for resource in hit.resources:
+            if '.pdf' in mimetypes.guess_all_extensions(
+                    resource.get('mime', '')):
+                hit.textpdf_url = resource.get('url', None)
+            if '.xml' in mimetypes.guess_all_extensions(
+                    resource.get('mime', '')):
+                hit.dc_url = resource.get('url', None)
+                if hit.dc_url:
+                    hit = self._process_dc(hit)
+        return hit
+
     def download_id(self, id, progress=''):
+        success = False
         url = 'https://polona.pl/api/entities/' + id
         log.debug(url)
         r = requests.get(url)
@@ -161,31 +214,35 @@ class Polona(object):
             log.critical(h.handle(r.text))
         if hit:
             if hit.id:
-                hit.subdir = []
-                year = hit.date
-                if year:
-                    hit.year = dateutil.parser.parse(year).year
-                    hit.subdir.append('%s-' % hit.year)
-                hit.subdir.append(hit.slug[:64])
-                hit.subdir.append('-%s' % hit.id)
-                hit.subdir = '-'.join(hit.subdir)
-                hit.url = 'https://polona.pl/item/%s,%s/' % (
-                    hit.slug, hit.id)
-                if hit.scans:
-                    if len(hit.scans):
-                        self.save_downloaded(hit, progress)
+                hit = self._process_hit(hit)
+                hit.textpdf_url = None
+                hit.dc_url = None
+                if hit.resources:
+                    hit = self._process_resources(hit)
+
+            if hit.scans:
+                if len(hit.scans):
+                    success = self.save_downloaded(hit, progress)
+        return success
 
     def save_downloaded(self, hit, progress):
+        success = True
         out_path = os.path.join(self.dldir, hit.subdir)
+        textpdf_path = None
         if self.o.images:
             desttext = 'folder'
             yaml_path = os.path.join(out_path, "%s.yaml" % (hit.id))
+            if hit.textpdf_url:
+                textpdf_path = os.path.join(out_path, "%s_text.pdf" % (hit.id))
         else:
             desttext = 'PDF'
             yaml_path = out_path + '.yaml'
+            if hit.textpdf_url:
+                textpdf_path = out_path + '_text.pdf'
             out_path += '.pdf'
 
         overwrite = True
+
         if self.o.max_pages > 0:
             total = len(hit.scans[:self.o.max_pages])
         else:
@@ -224,14 +281,23 @@ class Polona(object):
                         memimages.append(img)
                 else:
                     log.error('Cannot download %s' % (url))
-            if not self.o.images:
+            if not self.o.images and len(memimages):
                 log.info('Saving %s' % out_path)
-                if self.save_pdf(out_path, hit, memimages):
-                    log.info('Saved PDF')
+                success = self.pdf_save(out_path, memimages)
+                if success:
+                    success = self.pdf_add_meta(out_path, hit)
+                    if success:
+                        log.info('Saved high-res image PDF to file://%s' % (out_path))
+            if textpdf_path and not self.o.textpdf_skip:
+                success = self.download_save_textpdf(hit.textpdf_url, textpdf_path)
+                if success:
+                    success = self.pdf_add_meta(textpdf_path, hit)
+                    if success:
+                        log.info('Saved searchable text PDF to file://%s' % (textpdf_path))
+        return success
 
-    def save_pdf(self, pdf_path, hit, memimages):
-        with open(pdf_path, "wb") as pdffile:
-            pdffile.write(img2pdf.convert(memimages))
+    def pdf_add_meta(self, pdf_path, hit):
+        success = False
         pdf = pikepdf.open(pdf_path, allow_overwriting_input=True)
         with pdf.open_metadata() as meta:
             meta['xmp:CreatorTool'] = 'PyPolona %s' % (version)
@@ -240,6 +306,7 @@ class Polona(object):
             if id:
                 ids.append(id)
                 meta['dc:identifier'] = hit['id']
+            dc = hit.get('dc', {})
             if hit.get('isbn', None):
                 meta['prism2:isbn'] = hit['isbn']
                 ids.append(hit['isbn'])
@@ -264,29 +331,42 @@ class Polona(object):
             author = hit.get('creator_name', None)
             if not author:
                 author = hit.get('creator', None)
-            contributors = hit.get('contributor', [])
-            if len(contributors):
+            contributors = hit.get('contributor', None)
+            if type(contributors) is list:
                 meta['dc:contributor'] = set(contributors)
                 if not author:
                     author = contributors[0]
+            if not author:
+                author = ''
             meta['dc:creator'] = [author.replace(",", " ").replace("  ", " ")]
             meta['dc:source'] = hit['url']
-            rights = hit.get('rights')
-            if rights:
-                if type(rights) is list:
-                    rights = ";".join(rights)
-                    meta['dc:rights'] = rights
-                    meta['xmpRights:WebStatement'] = rights
-            categories = hit.get('categories', [])
+            dc_langs = dc.get('language', None)
+            if type(dc_langs) is list:
+                meta['dc:language'] = set([s['text'].strip() for s in dc_langs])
+            rights = hit.get('rights', None)
+            if type(rights) is list:
+                rights = ";".join(rights)
+                meta['dc:rights'] = rights
+                meta['xmpRights:WebStatement'] = rights
+            categories = hit.get('categories', None)
             if len(categories):
                 meta['dc:type'] = set(categories)
                 meta['prism2:contentType'] = "; ".join(categories)
-            keywords = \
-                hit.get('subject', []) + \
-                hit.get('keywords', []) + \
-                hit.get('categories', []) + \
-                hit.get('metatypes', []) + \
-                hit.get('projects', [])
+            keywords = []
+            if type(hit.get('subject', None)) is list:
+                keywords += hit['subject']
+            if type(hit.get('keywords', None)) is list:
+                keywords += hit['keywords']
+            if type(hit.get('categories', None)) is list:
+                keywords += hit['categories']
+            if type(hit.get('metatypes', None)) is list:
+                keywords += hit['metatypes']
+            if type(hit.get('projects', None)) is list:
+                keywords += hit['projects']
+            dc_tags = dc.get('tags', None)
+            if dc_tags:
+                keywords += [s['text'] for s in dc_tags]
+            keywords = sorted(set(keywords))
             if len(keywords):
                 meta['dc:subject'] = set(keywords)
                 meta['pdf:Keywords'] = "; ".join(keywords)
@@ -297,27 +377,56 @@ class Polona(object):
                 publisher.append(hit['imprint'])
             if len(publisher):
                 meta['dc:publisher'] = set(publisher)
-            if hit.get('publish_place', None):
-                meta['prism2:location'] = hit['publish_place']
+            if hit.get('publish_place', None) or hit.get('country', None):
+                meta['prism2:location'] = ", ".join(hit.get('publish_place', []) \
+                                                    + hit.get('country', []))
             description = []
+            if hit.get('series', None):
+                meta['prism2:seriesTitle'] = hit['series']
+                description.append(hit['series'])
+            dc_freq = dc.get('frequency', {}).get('text', None)
+            if dc_freq:
+                meta['prism2:publishingFrequency'] = dc_freq
+                description.append(dc_freq)
             if hit.get('press_title', None):
-                meta['prism2:seriesTitle'] = hit['press_title']
+                meta['prism2:publicationName'] = hit['press_title']
                 description.append(hit['press_title'])
-            description += \
-                hit.get('notes', []) + \
-                hit.get('physical_description', []) + \
-                hit.get('sources', []) + \
-                hit.get('projects', [])
+            if type(hit.get('notes', None)) is list:
+                description += hit['notes']
+            if type(hit.get('physical_description', None)) is list:
+                description += hit['physical_description']
+            if type(hit.get('sources', None)) is list:
+                description += hit['sources']
+            if type(hit.get('projects', None)) is list:
+                description += hit['projects']
             if len(description):
                 description_text = "; ".join(description)
                 meta['dc:description'] = description_text
-
         pdf.save(pdf_path)
-        return True
+        return success
+
+    def pdf_save(self, pdf_path, memimages):
+        if len(memimages):
+            with open(pdf_path, "wb") as pdffile:
+                pdffile.write(img2pdf.convert(memimages))
+            return True
+        else:
+            return False
+
+    def download_save_textpdf(self, url, pdf_path):
+        r = requests.get(url, stream=True)
+        if '.pdf' in mimetypes.guess_all_extensions(
+                r.headers.get('content-type', '')):
+            with open(pdf_path, 'wb') as pdf_file:
+                pdf_file.write(r.content)
+            return True
+        else:
+            return False
 
     def download_scan(self, url):
         r = requests.get(url, stream=True)
-        if r.headers['content-type'] == 'image/jpeg':
+        if '.jpg' in mimetypes.guess_all_extensions(
+                r.headers.get('content-type', '')):
             return r.content
         else:
             return None
@@ -327,8 +436,8 @@ class Polona(object):
         total = len(all)
         for idx, id in enumerate(all):
             progress = '[doc %03d/%03d]' % (idx+1, total)
-            self.download_id(id, progress)
-            log.info('%s: %s downloaded' % (progress, id))
+            if self.download_id(id, progress):
+                log.info('%s: %s processed' % (progress, id))
 
     def download(self):
         if self.can_download():

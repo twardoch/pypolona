@@ -14,6 +14,25 @@ The PyPolona GUI version is made from the command-line version, and uses the sam
 
 > Remember: to **run the GUI on macOS for the first time**, _Ctrl+click_ the DMG, choose _Open_, then _Open_, then drag to Applications folder, there _Ctrl+click_ the app icon, choose _Open_, then _Open_.
 
+## What’s new
+
+Current version is **1.6.0**.
+
+> #### 1.6.0
+>
+> - unless you specify `--no-text-pdf`, PyPolona now downloads an additional PDF that has searchable text if it’s available
+> - `--skip` is now `--no-overwrite`
+> improved PDF metadata import, bugfixes
+>
+> #### 1.5.0
+>
+> - `-i` saves each downloaded document as subfolder with images, otherwise as one PDF (with metadata)
+> - `--skip` instead of `--overwrite` flag
+>
+> #### 1.0.0
+>
+> - initial release
+
 ## Install standalone PyPolona app
 
 ### <a class="github-button btn btn-primary" href="https://github.com/twardoch/pypolona/raw/master/download/pypolona-mac.dmg" data-color-scheme="no-preference: dark; light: dark; dark: dark;" data-icon="octicon-download" data-size="large" aria-label="Download DMG for macOS">Download DMG for macOS</a>
@@ -36,15 +55,13 @@ If you have Python 3.8+, you can install the Python version with `python3 -m pip
 - If you installed the standalone app on Windows, run **`PyPolona`** from your start menu.
 - If you installed the Python version, run `ppolona` or `python3 -m pypolona`
 
-### Input tab
+### Search settings
 
 ![Input tab](https://raw.githubusercontent.com/twardoch/pypolona/master/docs/img/pypolona_url.png)
 
 In the Input tab:
 
 In **query**, you can paste one or more URLs from Polona.pl (space-separated).
-
-Turn on **Download images** to download the images from the queried result, go to the **Options** tab to customize the download location and set a max limit
 
 ![Search in input](https://raw.githubusercontent.com/twardoch/pypolona/master/docs/img/pypolona_search.png)
 
@@ -55,23 +72,35 @@ In **Choose One** you can change what the **query** field means:
 - **advanced**: you can use the advanced query syntax, see [documentation](https://polona.pl/api/entities/); go to the **Options** tab to customize
 - **ids**: Polona uses IDs for documents, you can just paste a list of space-separated IDs if you already know them
 
-### Options tab
+In the **Options** tab:
+
+- In **Space-separated languages**, you can enter a space-separated list of languages like Polona uses them, e.g. `polski niemiecki angielski`. Use the sidebar on the [Polona](https://polona.pl) website to find them.
+
+- In **Sort search**, you can sort the results by score, date, title or creator, in ascending or descending order.
+
+- In **Output search results in format**, you can choose a format in which search results will be output. If you choose ids, you click **Restart** and then paste them back into the query field. Choose urls to get clickable links.
+
+- In **Save search results**, you can optionally save the search results into the file.
+
+### Download settings
+
+Turn on **Download found docs** to download the content of the queried result.
+
+- Turn on **Download JPEGs into subfolders** to download each document content as a series of JPEGs. In the download folder, one subfolder will be created per document. The subfolder name starts with the publication year, then part of the title, then the ID. If you are also downloading searchable PDFs, an additional PDF with the `_text` suffix will be saved in the subfolder. Also, a YAML file with some metadata will be saved in the subfolder.
+
+- Turn off **Download JPEGs into subfolders** to download each document content as one PDF. The app will not create subfolders. The PDF name starts with the publication year, then part of the title, then the ID. If you are also downloading searchable PDFs, an additional PDF with the `_text` suffix will be also saved.
+
+In the **Options** tab:
 
 ![Options](https://raw.githubusercontent.com/twardoch/pypolona/master/docs/img/pypolona_options.png)
 
-In **Space-separated languages**, you can enter a space-separated list of languages like Polona uses them, e.g. `polski niemiecki angielski`. Use the sidebar on the [Polona](https://polona.pl) website to find them.
+- In **Save downloaded docs in this folder**, you can choose into which folder the app will download the documents. By default it uses the `polona` subfolder on your desktop.
 
-In **Sort search**, you can sort the results by score, date, title or creator, in ascending or descending order.
+- In **Download max pages**, you can limit the maximum number of pages that the app downloads for each document. This is useful for test downloads, since some documents may have hundreds or pages.
 
-In **Output search results in format**, you can choose a format in which search results will be output. If you choose ids, you click **Restart** and then paste them back into the query field. Choose urls to get clickable links.
+- For some documents, Polona has an extra lower-resolution searchable PDF. By default, that PDF is also downloaded, and saved with a `_text` suffix. Turn on **Skip downloading searchable PDFs** to not download these additional PDFs.
 
-In **Save search results**, you can optionally save the search results into the file.
-
-In **Download images into subfolders**, you can choose into which folder the app will download the images. By default it uses the `polona` subfolder on your desktop. When you start the download, the app will create subfolders inside, one per document. The folder names start with the publication year, then part of the title, then the ID.
-
-Turn on **Overwrite**, and the app will re-download previously downloaded documents. If off, it will skip them.
-
-In **Max number of pages**, you can limit the maximum number of pages that the app downloads for each document. This is useful for test downloads, since some documents may have hundreds or pages.
+- By default, the app will re-download and overwrite previously downloaded documents. Turn on **Skip existing subfolders/PDFs** to skip them.
 
 ### Buttons
 
@@ -94,10 +123,10 @@ _Note: the CLI is `ppolona`, not `pypolona`_
 
 ```
 usage: ppolona [-h] [-S | -A | -I] [-D] [-i] [-l [language [language ...]]] [-s {score desc,date desc,date asc,title asc,creator asc}]
-               [-f {ids,urls,yaml,json}] [-o results_file] [-d download_folder] [-M num_pages] [--skip]
+               [-f {ids,urls,yaml,json}] [-o results_file] [-d download_folder] [-M num_pages] [-T] [-O]
                query [query ...]
 
-Search in and download from Polona.pl. GUI: Help › PyPolona 1.5.0 Help. CLI: ppolona -h
+Search in and download from Polona.pl. GUI: Help › PyPolona 1.6.0 Help. CLI: ppolona -h
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -107,8 +136,8 @@ Input:
   -S, --search          Query is search query, see Options
   -A, --advanced        Query is advanced search query, see Documentation
   -I, --ids             Query is space-separated IDs
-  -D, --download        Download images from results, see Options
-  -i, --images          Download as JPEGs in a subfolder instead of one PDF
+  -D, --download        Download found docs, see Options
+  -i, --images          Download JPEGs into subfolders instead of PDF
 
 Options:
   -l [language [language ...]], --lang [language [language ...]]
@@ -120,16 +149,12 @@ Options:
   -o results_file, --output results_file
                         Save search results to this file
   -d download_folder, --download-dir download_folder
-                        Download images into subfolders/PDFs in this folder
+                        Save downloaded docs in this folder
   -M num_pages, --max-pages num_pages
-                        Max number of pages per doc to download (0: all)
-  --skip                Skip existing subfolders/PDFs
+                        Download max pages per doc (0: all)
+  -T, --no-text-pdf     Skip downloading searchable PDFs
+  -O, --no-overwrite    Skip existing subfolders/PDFs
 ```
-## Changelog
-
-- 1.5.0: -i saves each downloaded document as subfolder with images, otherwise as one PDF (with metadata), --skip instead of --overwrite flag
-- 1.0.0: Initial release
-
 ## More about Polona
 
 The [Polona](https://polona.pl/) is a bit overcomplicated to use, but fortunately, Polona publishes a [JSON API](https://polona.pl/api/entities/). The pypolona package uses that API.
