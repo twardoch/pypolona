@@ -8,6 +8,10 @@ from PyInstaller.building.build_main import Analysis
 from PyInstaller.building.datastruct import Tree
 from PyInstaller.building.osx import BUNDLE
 
+APP = 'pypolona'
+GUI = 'PyPolona'
+CLI = 'ppolona'
+
 gooey_root = os.path.dirname(gooey.__file__)
 gooey_languages = Tree(os.path.join(
     gooey_root, 'languages'), prefix='gooey/languages')
@@ -17,8 +21,8 @@ block_cipher = None
 
 # noinspection PyUnresolvedReferences
 a = Analysis(
-    ['ppolona.py'],
-    pathex=[os.path.join(os.path.abspath(SPECPATH), '..', 'pypolona')],
+    ['%s.py' % CLI],
+    pathex=[os.path.join(os.path.abspath(SPECPATH), '..', APP)],
     binaries=[],
     datas=[],
     hiddenimports=[],
@@ -42,7 +46,7 @@ exe = EXE(pyz,
           gooey_languages,
           gooey_images,
           [],
-          name='pypolona',
+          name=APP,
           debug=False,
           bootloader_ignore_signals=False,
           strip=False,
@@ -50,4 +54,4 @@ exe = EXE(pyz,
           upx_exclude=[],
           runtime_tmpdir=None,
           console=False,
-          icon='..\\pypolona\\icons\\pypolona.ico')
+          icon='..\\%(app)s\\icons\\%(app)s.ico' % {'app': APP})

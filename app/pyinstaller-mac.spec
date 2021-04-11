@@ -8,9 +8,13 @@ from PyInstaller.building.build_main import Analysis
 from PyInstaller.building.datastruct import Tree
 from PyInstaller.building.osx import BUNDLE
 
+APP = 'pypolona'
+GUI = 'PyPolona'
+CLI = 'ppolona'
+
 def get_version(*args):
     ver = "undefined"
-    verstrline = open(os.path.join('pypolona','__init__.py'), "rt").read()
+    verstrline = open(os.path.join(APP,'__init__.py'), "rt").read()
     VSRE = r"^__version__ = ['\"]([^'\"]*)['\"]"
     mo = re.search(VSRE, verstrline, re.M)
     if mo:
@@ -27,8 +31,8 @@ block_cipher = None
 
 # noinspection PyUnresolvedReferences
 a = Analysis(
-    ['ppolona.py'],
-    pathex=[os.path.join(os.path.abspath(SPECPATH), '..', 'pypolona')],
+    ['%s.py' % CLI],
+    pathex=[os.path.join(os.path.abspath(SPECPATH), '..', APP)],
     binaries=[],
     datas=[],
     hiddenimports=[],
@@ -48,7 +52,7 @@ exe = EXE(
     pyz,
     a.scripts,
     exclude_binaries=True,
-    name='ppolona',
+    name=CLI,
     debug=False,
     strip=False,
     upx=True,
@@ -63,15 +67,15 @@ coll = COLLECT(
     gooey_images,
     strip=False,
     upx=True,
-    name='ppolona'
+    name=CLI
 )
 
 app = BUNDLE(
     coll,
-    name='PyPolona.app',
+    name='%s.app' % GUI,
     icon=os.path.join(os.path.abspath(SPECPATH), '..',
-                      'pypolona', 'icons', 'pypolona.icns'),
-    bundle_identifier='com.twardoch.pypolona',
+                      APP, 'icons', '%s.icns' % APP),
+    bundle_identifier='com.twardoch.%s' % APP,
     info_plist={
         'NSPrincipalClass': 'NSApplication',
         'NSAppleScriptEnabled': False,

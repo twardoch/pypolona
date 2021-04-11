@@ -4,16 +4,18 @@ if [ "$dir" = "$0" ]; then dir="."; fi
 cd "$dir" || exit
 
 export WINEDEBUG="fixme-all,err-all"
+APP="pypolona"
 PYEXE="$HOME/.wine/drive_c/windows/py.exe"
 ISSEXE="$HOME/.wine/drive_c/Program Files (x86)/Inno Setup 6/ISCC.exe"
 PYMAC="python3"
 PYWIN="wine py"
-VER=$(echo -e "import pypolona.__init__\nprint(pypolona.__init__.__version__)" | "$PYMAC")
+PYVER="3.9.4"
+VER=$(echo -e "import $APP.__init__\nprint($APP.__init__.__version__)" | "$PYMAC")
 
 VER=$(
   perl -lne \
     "print \$1 if /^__version__ = ['\"]([^'\"]*)['\"]/" \
-    "pypolona/__init__.py"
+    "$APP/__init__.py"
 )
 
 function pp() {
@@ -73,7 +75,7 @@ function pkgbrew() {
     rm "$(brew --prefix)/var/testX6mg87lk"
   fi
   if [ "$1" == "cask" ]; then
-    local brewins="brew cask install"
+    local brewins="brew install --cask"
     local brewupg="brew upgrade --cask"
     local brewlist="brew list --cask"
     local pkg=${@:2}
@@ -119,10 +121,10 @@ function preppy() {
 }
 
 function prep() {
-  brewapp wine cask wine-staging
+  brewapp wine cask wine-stable
   if [ ! -f "$PYEXE" ]; then
     pins "wine py"
-    curl -L -o "$TMPDIR/python.exe" https://www.python.org/ftp/python/3.8.5/python-3.8.5-amd64.exe &&
+    curl -L -o "$TMPDIR/python.exe" https://www.python.org/ftp/python/$PYVER/python-$PYVER-amd64.exe &&
       wine "$TMPDIR/python.exe" /quiet &&
       rm "$TMPDIR/python.exe"
   fi
@@ -168,14 +170,14 @@ function buildmac() {
 
 function buildwiniss() {
   pp "## Building Win EXE installer"
-  wine "$ISSEXE" /dMyAppVersion="$VER" app/pypolona.iss /Q
+  wine "$ISSEXE" /dMyAppVersion="$VER" app/$APP.iss /Q
 }
 
 function buildwinzip() {
   pp "## Building Win ZIP"
-  rm -rf "download/pypolona-win.zip" && zip -j \
-    "download/pypolona-win.zip" \
-    "app/build/dist-win/setup_pypolona_$VER.exe"
+  rm -rf "download/$APP-win.zip" && zip -j \
+    "download/$APP-win.zip" \
+    "app/build/dist-win/setup_$APP_$VER.exe"
 }
 
 function buildwin() {
@@ -241,11 +243,11 @@ EOF
   curl --data "$(generate_post_data)" "https://api.github.com/repos/$user/$repo/releases?access_token=$token"
 
   echo
-  echo "## Publishing on https://pypi.org/project/pypolona/"
+  echo "## Publishing on https://pypi.org/project/$APP/"
   echo "Enter your pypi.org login and password:"
 
   python3 -m twine upload --verbose -c "$text" dist/*
-  open "https://pypi.org/project/pypolona/"
+  open "https://pypi.org/project/$APP/"
 
   pp "## Pushing to Github"
   git add --all

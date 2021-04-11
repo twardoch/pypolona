@@ -260,6 +260,7 @@ class Polona(object):
                 os.makedirs(out_path)
         if self.o.images:
             with open(yaml_path, 'w') as yamlfile:
+                print(yaml_path)
                 yamlfile.write(oyaml.yaml_dump(hit))
         if overwrite:
             memimages = []
@@ -270,17 +271,19 @@ class Polona(object):
                     jpeg_mask = '%s-%04d.jpg' % (hit.id, idx + 1)
                 log.info('%s %s: downloading' %
                          (progress, progressp))
-                url = scan['resources'][0]['url']
-                img = self.download_scan(url)
-                if img:
-                    if self.o.images:
-                        jpeg_path = os.path.join(out_path, jpeg_mask)
-                        with open(jpeg_path, "wb") as jpeg_file:
-                            jpeg_file.write(img)
-                    else:
-                        memimages.append(img)
-                else:
-                    log.error('Cannot download %s' % (url))
+                for res in scan['resources']:
+                    if res['mime'] == 'image/jpeg':
+                        url = res['url']
+                        img = self.download_scan(url)
+                        if img:
+                            if self.o.images:
+                                jpeg_path = os.path.join(out_path, jpeg_mask)
+                                with open(jpeg_path, "wb") as jpeg_file:
+                                    jpeg_file.write(img)
+                            else:
+                                memimages.append(img)
+                        else:
+                            log.error('Cannot download %s' % (url))
             if not self.o.images and len(memimages):
                 log.info('Saving %s' % out_path)
                 success = self.pdf_save(out_path, memimages)

@@ -5,6 +5,9 @@ from setuptools import setup, find_packages
 import os
 import re
 
+APP = 'pypolona'
+CLI = 'ppolona'
+
 readme_file = os.path.join(os.path.dirname(
     os.path.abspath(__file__)), 'README.md')
 with open(readme_file) as f:
@@ -17,7 +20,7 @@ def get_version(*args):
     try:
         ver = pypolona.__init__.__version__
     except AttributeError:
-        verstrline = open(os.path.join('pypolona', '__init__.py'), "rt").read()
+        verstrline = open(os.path.join(APP, '__init__.py'), "rt").read()
         VSRE = r"^__version__ = ['\"]([^'\"]*)['\"]"
         mo = re.search(VSRE, verstrline, re.M)
         if mo:
@@ -47,25 +50,25 @@ def get_absolute_path(*args):
 
 
 setup(
-    name='pypolona',
+    name=APP,
     author='Adam Twardoch',
     author_email='adam+github@twardoch.com',
-    url='https://twardoch.github.io/pypolona/',
+    url='https://twardoch.github.io/%s/' % APP,
     project_urls={
-        'Source': "https://github.com/twardoch/pypolona"
+        'Source': "https://github.com/twardoch/%s" % APP
     },
     version=get_version(),
     license="MIT",
     description="Image downloader for the polona.pl website of the Polish National Library",
     long_description=readme,
     long_description_content_type='text/markdown',
-    python_requires='>=3.7',
+    python_requires='>=3.9',
     install_requires=get_requirements('requirements.txt'),
     extras_require={
         'dev': [
-            'twine>=3.2.0',
-            'pyinstaller>=4.0',
-            'dmgbuild>=1.3.3; sys_platform == "darwin"'
+            'twine>=3.4.1',
+            'pyinstaller>=4.2',
+            'dmgbuild>=1.4.2; sys_platform == "darwin"'
         ]
     },
     packages=find_packages(),
@@ -73,11 +76,11 @@ setup(
         'Environment :: Console',
         'Development Status :: 4 - Beta',
         'License :: OSI Approved :: MIT License',
-        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.9',
     ],
     keywords='polona jpeg downloader cli',
     entry_points='''
         [console_scripts]
-        ppolona=pypolona.__main__:main
-    '''
+        %(cli)s=%(name)s.__main__:main
+    ''' % {cli: CLI, name: APP}
 )

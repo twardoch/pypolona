@@ -16,7 +16,12 @@ The PyPolona GUI version is made from the command-line version, and uses the sam
 
 ## What’s new
 
-Current version is **1.6.0**.
+Current version is **1.6.2**.
+
+#### 1.6.2
+
+- fix for failing to downloads JPG if other Polona resources exist for a page
+- minor GUI improvements
 
 #### 1.6.0
 

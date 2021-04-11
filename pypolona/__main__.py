@@ -25,14 +25,17 @@ try:
 except ImportError:
     from pypolona.__init__ import __version__ as version
 
+import sys
 from ezgooey.ez import *
+#from cli2gui import Cli2Gui
 
 logging.init(level=logging.INFO)
 log = logging.logger('pypolona')
 
-GUI_NAME='PyPolona %s' % (version)
-CLI_NAME='ppolona'
-DESCRIPTION = 'Search in and download from Polona.pl. GUI: Help › %s Help. CLI: %s -h' % (GUI_NAME, CLI_NAME)
+GUI_NAME = 'PyPolona %s' % (version)
+CLI_NAME = 'ppolona'
+DESCRIPTION = 'Search in and download from Polona.pl. GUI: Help › %s Help. CLI: %s -h' % (
+    GUI_NAME, CLI_NAME)
 
 
 @ezgooey(
@@ -59,23 +62,31 @@ DESCRIPTION = 'Search in and download from Polona.pl. GUI: Help › %s Help. CLI
     target=None,
     use_legacy_titles=True,
     menu=[{
-        'name' : 'Help',
+        'name': 'Help',
         'items': [{
-            'type'       : 'AboutDialog',
-            'menuTitle'  : 'About',
-            'name'       : GUI_NAME,
+            'type': 'AboutDialog',
+            'menuTitle': 'About',
+            'name': GUI_NAME,
             'description': 'Click the link for more info',
-            'website'    : 'https://twardoch.github.io/pypolona/',
-            'license'    : 'MIT'
+            'website': 'https://twardoch.github.io/pypolona/',
+            'license': 'MIT'
         }, {
-            'type'     : 'Link',
+            'type': 'Link',
             'menuTitle': '%s Documentation' % (GUI_NAME),
-            'url'      : 'https://twardoch.github.io/pypolona/'
+            'url': 'https://twardoch.github.io/pypolona/'
         }]
     }]
 )
 def gui():
     return cli()
+
+
+# @Cli2Gui(auto_enable=True, parser="argparse", gui="pysimpleguiweb",
+#          theme=None, darkTheme=None, sizes=None, image=None, program_name=None,
+#          program_description=None, max_args_shown=5)
+# def webgui():
+#     return cli()
+
 
 def cli():
     parser = ArgumentParser(
@@ -89,10 +100,10 @@ def cli():
         'Input',
         gooey_options={
             'show_border': True,
-            'columns'    : 2,
-            'margin_top' : 0
-            }
-        )
+            'columns': 2,
+            'margin_top': 0
+        }
+    )
     parser_q.add_argument(
         nargs='+',
         dest='query',
@@ -101,12 +112,18 @@ def cli():
         help=query_help,
         widget='Textarea',
         gooey_options={
+            'show_help': True,
             'height': 120,
+            'placeholder': 'Enter Polona.pl URL or choose query type and enter search query, advanced query or space-separated Polona IDs',
         }
     )
 
     command = parser_q.add_mutually_exclusive_group(
-        required=False
+        required=False,
+        gooey_options={
+            'show_help': True,
+            'title': 'query type',
+        }
     )
     command.add_argument(
         '-S',
@@ -115,7 +132,7 @@ def cli():
         action='store_true',
         help='Query is search query, see Options',
         gooey_options={
-            'show_help': False,
+            'show_help': True,
         }
     )
     command.add_argument(
@@ -125,7 +142,7 @@ def cli():
         action='store_true',
         help='Query is advanced search query, see Documentation',
         gooey_options={
-            'show_help': False,
+            'show_help': True,
         }
     )
     command.add_argument(
@@ -135,7 +152,7 @@ def cli():
         action='store_true',
         help='Query is space-separated IDs',
         gooey_options={
-            'show_help': False,
+            'show_help': True,
         }
     )
     parser_q.add_argument(
@@ -161,10 +178,10 @@ def cli():
     parser_s = parser.add_argument_group(
         'Options',
         gooey_options={
-        'show_border'   : True,
-        'columns'       : 2,
-        'margin_top'    : 0
-    })
+            'show_border': True,
+            'columns': 2,
+            'margin_top': 0
+        })
     parser_s.add_argument(
         '-l',
         '--lang',
@@ -175,6 +192,7 @@ def cli():
         help='Space-separated languages: polski angielski niemiecki...',
         gooey_options={
             'show_label': False,
+            'placeholder': 'polski angielski niemiecki',
         }
     )
     parser_s.add_argument(
@@ -261,11 +279,24 @@ def cli():
             'show_label': False,
         }
     )
+
+    parser_q.add_argument(
+        '-V',
+        '--version',
+        action='version',
+        version='%s' % (version)
+    )
+
     return parser
 
 
-def main():
-    parser = gui()
+def main(*args, **kwargs):
+    #    if '--web' in sys.argv:
+    #        sys.argv.pop(sys.argv.index('--web'))
+    #        parser = webgui(*args, **kwargs)
+    #    else:
+    if True:
+        parser = gui(*args, **kwargs)
     opts = parser.parse_args()
     if opts:
         opts = vars(opts)
