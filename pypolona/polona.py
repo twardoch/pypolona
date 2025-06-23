@@ -199,10 +199,10 @@ class Polona:
                             ".//tags",
                         ],
                     )
-                    dc = dc_data_converted.get(  # type: ignore[union-attr]
-                        "{http://www.w3.org/1999/02/22-rdf-syntax-ns#}Description", {}
-                    )
-                    if dc:  # Check if dc is not empty
+                    if dc := dc_data_converted.get(  # type: ignore[union-attr]
+                        "{http://www.w3.org/1999/02/22-rdf-syntax-ns#}Description",
+                        {},
+                    ):
                         hit.dc = dc
             except etree.XMLSyntaxError as e:
                 log.error(f"Failed to parse DC XML for {hit.id}: {e}")
