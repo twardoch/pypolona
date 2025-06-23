@@ -116,8 +116,7 @@ class Polona:
                     hit.id = current_jhit.id
                     hit.title = current_jhit.title
                     hit.slug = current_jhit.slug
-                    year = current_jhit.date
-                    if year:
+                    if year := current_jhit.date:
                         hit.year = dateutil.parser.parse(year).year
                     hit.url = f"https://polona.pl/item/{hit.slug},{hit.id}/"
                     self.hits[current_jhit.id] = hit
