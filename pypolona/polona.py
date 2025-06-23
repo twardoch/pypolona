@@ -255,10 +255,6 @@ class Polona:
             log.warn(
                 f"Hit data for {item_id} does not have an 'id' or is empty: {hit_data}"
             )
-        else:
-            # Logged during exception or if r.json() was None but didn't except (unlikely for ad(r.json()))
-            pass
-
         return success
 
     def save_downloaded(self, hit: ad, progress: str) -> bool:
