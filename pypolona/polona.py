@@ -580,7 +580,16 @@ class Polona:
                     pdf_file.write(r.content)
                 return True
             else:
-                log.warn(f"Content type for {url_str} is not PDF: {content_type}")
+                # Enhanced JPEG detection
+                if content_type.lower().startswith("image/jpeg") or content_type.lower().startswith("image/pjpeg"):
+                    # Content type is a JPEG variant
+                    return r.content
+                # Fallback: check JPEG file signature (magic number)
+                if r.content[:2] == b'\xff\xd8' and r.content[-2:] == b'\xff\xd9':
+                    # JPEG files start with FF D8 and end with FF D9
+                    log.info(f"JPEG detected by file signature for {url_str}")
+                    return r.content
+                log.warn(f"Content type for {url_str} is not PDF or JPEG: {content_type}")
                 return False
         except requests.RequestException as e:
             log.error(f"Failed to download text PDF from {url_str}: {e}")
