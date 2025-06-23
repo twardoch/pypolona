@@ -106,4 +106,4 @@ venv.bak/
 # mypy
 .mypy_cache/
 
-app/build/
+app/build/\n# Hatch\n.hatch\n*.lock\n
