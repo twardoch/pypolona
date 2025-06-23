@@ -210,6 +210,7 @@ class Polona:
 
     def _process_resources(self, hit: ad) -> ad:  # Added type hint
         if not hit.resources:  # Guard against missing resources
+            log.warning(f"Hit {getattr(hit, 'id', '<unknown>')} has no resources. This may indicate upstream data issues.")
             return hit
         for resource in hit.resources:
             mime_type = resource.get("mime", "")
