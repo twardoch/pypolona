@@ -25,8 +25,6 @@ except ImportError:
     from pypolona import __version__ as version  # type: ignore[no-redef]
 
 
-# from cli2gui import Cli2Gui
-
 ezgooey_logging.init(level=ezgooey_logging.INFO)
 log = ezgooey_logging.logger("pypolona")
 
@@ -81,13 +79,6 @@ DESCRIPTION = f"Search in and download from Polona.pl. GUI: Help > {GUI_NAME} He
 )
 def gui():
     return cli()
-
-
-# @Cli2Gui(auto_enable=True, parser="argparse", gui="pysimpleguiweb",
-#          theme=None, darkTheme=None, sizes=None, image=None, program_name=None,
-#          program_description=None, max_args_shown=5)
-# def webgui():
-#     return cli()
 
 
 def cli():
@@ -269,12 +260,7 @@ def cli():
 
 
 def main(*args, **kwargs):
-    #    if '--web' in sys.argv:
-    #        sys.argv.pop(sys.argv.index('--web'))
-    #        parser = webgui(*args, **kwargs)
-    #    else:
-    if True:
-        parser = gui(*args, **kwargs)
+    parser = gui(*args, **kwargs)
     opts = parser.parse_args()
     if opts:
         opts_dict = vars(opts)
