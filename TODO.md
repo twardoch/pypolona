@@ -1,0 +1,53 @@
+# PyPolona Streamlining TODO (MVP v1.0 Focus)
+
+- [x] **Initial Setup & Analysis:**
+    - [x] Verify understanding of the project structure and main functionalities.
+    - [x] Create `PLAN.md`.
+    - [x] Create `TODO.md` (this file).
+    - [x] Create `CHANGELOG.md`.
+- [ ] **Remove Vendored Gooey (`src/gooey`):**
+    - [ ] Confirm `ezgooey` is sufficient.
+    - [ ] Delete the `src/gooey` directory.
+    - [ ] Test GUI functionality.
+- [ ] **Simplify `pypolona/__main__.py`:**
+    - [ ] Remove commented-out `webgui` section.
+    - [ ] Simplify `main()` function (remove `if True:`).
+    - [ ] Test CLI and GUI startup.
+- [ ] **Refactor `pypolona/polona.py` (Core Logic):**
+    - [ ] Improve Readability:
+        - [ ] Break down `save_downloaded()` and `pdf_add_meta()` if beneficial.
+        - [ ] Clarify variable names (e.g., `r`, `jhits`, `hit_data`).
+    - [ ] Error Handling:
+        - [ ] Replace generic `except Exception` with specific exceptions.
+    - [ ] Type Hinting:
+        - [ ] Address `# type: ignore` comments.
+        - [ ] Replace `Any` with specific types where possible.
+    - [ ] Logging:
+        - [ ] Ensure consistent and informative log levels and messages.
+    - [ ] Helper Functions:
+        - [ ] Review `_requests_encode_dict()` for simplification/removal.
+    - [ ] Resource Management:
+        - [ ] Ensure `with open(...)` is used for all file operations.
+    - [ ] Test thoroughly.
+- [ ] **Streamline `app/` Directory:**
+    - [ ] Evaluate and potentially remove `app/ppolona.py`.
+    - [ ] Clean up comments/examples in `app/dmgbuild_settings.py`.
+    - [ ] Test application launch and DMG building.
+- [ ] **Review and Update Dependencies (`pyproject.toml`):**
+    - [ ] Verify all listed dependencies are used.
+    - [ ] Defer non-critical updates for MVP.
+- [ ] **Handle `.dccache` file:**
+    - [ ] Remove `.dccache` from repository.
+    - [ ] Add `.dccache` to `.gitignore`.
+- [ ] **Testing and Validation:**
+    - [ ] Perform comprehensive manual testing of all core features and options.
+    - [ ] Run `pytest` and ensure existing tests pass.
+- [ ] **Update Documentation:**
+    - [ ] Update `README.md` for any changes.
+    - [ ] Keep `PLAN.md` and `TODO.md` updated.
+    - [ ] Maintain `CHANGELOG.md`.
+- [ ] **Final Review and Submission:**
+    - [ ] Final code review.
+    - [ ] Submit changes with a clear commit message.
+---
+(This `TODO.md` will be created in the filesystem)

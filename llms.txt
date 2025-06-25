@@ -1,0 +1,1890 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+.github/
+  workflows/
+    ci.yml
+  FUNDING.yml
+app/
+  dmgbuild_settings.py
+  ppolona.py
+pypolona/
+  __init__.py
+  __main__.py
+  polona.py
+_config.yml
+.dccache
+.gitignore
+.pre-commit-config.yaml
+LICENSE
+pyproject.toml
+README.md
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path=".github/workflows/ci.yml">
+name: Python CI/CD
+
+on:
+  push:
+    branches: [ main, master ] # Adjust if your main branch has a different name
+    tags:
+      - 'v*' # Also trigger on version tags
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # Needed for hatch-vcs to determine version from git tags
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install uv
+      run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+    - name: Install dependencies
+      run: |
+        uv venv --python ${{ matrix.python-version }} .venv
+        source .venv/bin/activate
+        uv pip install -e .[dev]
+        # Install GTK dependencies for wxPython (needed by Gooey)
+        sudo apt-get update
+        sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+
+    - name: Lint with Ruff
+      run: |
+        source .venv/bin/activate
+        ruff check .
+        ruff format --check .
+
+    - name: Type check with Mypy
+      run: |
+        source .venv/bin/activate
+        mypy pypolona/
+
+    - name: Test with Pytest
+      run: |
+        source .venv/bin/activate
+        pytest
+
+    - name: Build package
+      run: |
+        source .venv/bin/activate
+        hatch build
+
+  # Optional: Publish to PyPI on new version tags
+  # publish-to-pypi:
+  #   needs: lint-and-test # Ensure tests and linting pass before publishing
+  #   runs-on: ubuntu-latest
+  #   if: startsWith(github.ref, 'refs/tags/v') # Only run on version tags
+  #   steps:
+  #   - uses: actions/checkout@v4
+  #     with:
+  #       fetch-depth: 0 # For hatch-vcs
+  #
+  #   - name: Set up Python
+  #     uses: actions/setup-python@v5
+  #     with:
+  #       python-version: "3.12" # Or your preferred Python version for publishing
+  #
+  #   - name: Install uv and build tools
+  #     run: |
+  #       curl -LsSf https://astral.sh/uv/install.sh | sh
+  #       source $HOME/.cargo/env # To make uv available in PATH for next steps
+  #       uv venv .venv
+  #       source .venv/bin/activate
+  #       uv pip install hatch twine
+  #
+  #   - name: Build package
+  #     run: |
+  #       source .venv/bin/activate
+  #       hatch build -t sdist -t wheel
+  #
+  #   - name: Publish package to PyPI
+  #     env:
+  #       TWINE_USERNAME: __token__
+  #       TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }} # Store your PyPI token as a GitHub secret
+  #     run: |
+  #       source .venv/bin/activate
+  #       twine upload dist/*
+  #
+  #   # Optional: Create GitHub Release
+  #   - name: Create GitHub Release
+  #     uses: softprops/action-gh-release@v2 # Check for latest version
+  #     if: startsWith(github.ref, 'refs/tags/')
+  #     with:
+  #       files: dist/*
+  #       # body_path: CHANGELOG.md # Optional: path to your changelog
+  #       # prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-alpha') || contains(github.ref, '-beta') }} # Optional: mark as pre-release
+  #     env:
+  #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+</file>
+
+<file path=".github/FUNDING.yml">
+# These are supported funding model platforms
+
+github: # Replace with up to 4 GitHub Sponsors-enabled usernames e.g., [twardoch]
+</file>
+
+<file path="app/dmgbuild_settings.py">
+import os.path
+import re
+
+import biplist
+
+#
+# Example settings file for dmgbuild
+#
+
+# Use like this: dmgbuild -s settings.py "Test Volume" test.dmg
+
+# You can actually use this file for your own application (not just TextEdit)
+# by doing e.g.
+#
+#   dmgbuild -s settings.py -D app=/path/to/My.app "My Application" MyApp.dmg
+
+# .. Useful stuff ..............................................................
+
+APP = "pypolona"
+GUI = "PyPolona"
+CLI = "ppolona"
+
+
+def get_version(*args):
+    ver = ""
+    verstrline = open(os.path.join("..", APP, "__init__.py")).read()
+    VSRE = r"^__version__ = ['\"]([^'\"]*)['\"]"
+    mo = re.search(VSRE, verstrline, re.M)
+    if mo:
+        ver = mo.group(1)
+    return ver
+
+
+application = defines.get("app", os.path.join("build", "dist-mac", f"{GUI}.app")) # type: ignore[name-defined]
+appname = os.path.basename(application)
+
+
+def icon_from_app(app_path):
+    plist_path = os.path.join(app_path, "Contents", "Info.plist")
+    plist = biplist.readPlist(plist_path)
+    icon_name = plist["CFBundleIconFile"]
+    icon_root, icon_ext = os.path.splitext(icon_name)
+    if not icon_ext:
+        icon_ext = ".icns"
+    icon_name = icon_root + icon_ext
+    return os.path.join(app_path, "Contents", "Resources", icon_name)
+
+
+# .. Basics ....................................................................
+
+# Uncomment to override the output filename
+filename = os.path.join("..", "download", f"{APP}-mac.dmg")
+
+# Uncomment to override the output volume name
+volume_name = f"{GUI} {get_version()}" # type: ignore[name-defined]
+
+
+# Volume format (see hdiutil create -help)
+format = defines.get("format", "UDBZ") # type: ignore[name-defined]
+
+# Volume size
+size = defines.get("size", None) # type: ignore[name-defined]
+
+# Files to include
+files = [application]
+
+# Symlinks to create
+symlinks = {"Applications": "/Applications"}
+
+# Volume icon
+#
+# You can either define icon, in which case that icon file will be copied to the
+# image, *or* you can define badge_icon, in which case the icon file you specify
+# will be used to badge the system's Removable Disk icon
+#
+# icon = '/path/to/icon.icns'
+badge_icon = icon_from_app(application)
+
+# Where to put the icons
+icon_locations = {appname: (140, 120), "Applications": (500, 120)}
+
+# .. Window configuration ......................................................
+
+# Background
+#
+# This is a STRING containing any of the following:
+#
+#    #3344ff          - web-style RGB color
+#    #34f             - web-style RGB color, short form (#34f == #3344ff)
+#    rgb(1,0,0)       - RGB color, each value is between 0 and 1
+#    hsl(120,1,.5)    - HSL (hue saturation lightness) color
+#    hwb(300,0,0)     - HWB (hue whiteness blackness) color
+#    cmyk(0,1,0,0)    - CMYK color
+#    goldenrod        - X11/SVG named color
+#    builtin-arrow    - A simple built-in background with a blue arrow
+#    /foo/bar/baz.png - The path to an image file
+#
+# The hue component in hsl() and hwb() may include a unit; it defaults to
+# degrees ('deg'), but also supports radians ('rad') and gradians ('grad'
+# or 'gon').
+#
+# Other color components may be expressed either in the range 0 to 1, or
+# as percentages (e.g. 60% is equivalent to 0.6).
+background = "builtin-arrow"
+
+show_status_bar = False
+show_tab_view = False
+show_toolbar = False
+show_pathbar = False
+show_sidebar = False
+sidebar_width = 180
+
+# Window position in ((x, y), (w, h)) format
+window_rect = ((100, 100), (640, 280))
+
+# Select the default view; must be one of
+#
+#    'icon-view'
+#    'list-view'
+#    'column-view'
+#    'coverflow'
+#
+default_view = "icon-view"
+
+# General view configuration
+show_icon_preview = False
+
+# Set these to True to force inclusion of icon/list view settings (otherwise
+# we only include settings for the default view)
+include_icon_view_settings = "auto"
+include_list_view_settings = "auto"
+
+# .. Icon view configuration ...................................................
+
+arrange_by = None
+grid_offset = (0, 0)
+grid_spacing = 100
+scroll_position = (0, 0)
+label_pos = "bottom"  # or 'right'
+text_size = 16
+icon_size = 128
+
+# .. List view configuration ...................................................
+
+# Column names are as follows:
+#
+#   name
+#   date-modified
+#   date-created
+#   date-added
+#   date-last-opened
+#   size
+#   kind
+#   label
+#   version
+#   comments
+#
+list_icon_size = 16
+list_text_size = 12
+list_scroll_position = (0, 0)
+list_sort_by = "name"
+list_use_relative_dates = True
+list_calculate_all_sizes = (False,)
+list_columns = ("name", "date-modified", "size", "kind", "date-added")
+list_column_widths = {
+    "name": 300,
+    "date-modified": 181,
+    "date-created": 181,
+    "date-added": 181,
+    "date-last-opened": 181,
+    "size": 97,
+    "kind": 115,
+    "label": 100,
+    "version": 75,
+    "comments": 300,
+}
+list_column_sort_directions = {
+    "name": "ascending",
+    "date-modified": "descending",
+    "date-created": "descending",
+    "date-added": "descending",
+    "date-last-opened": "descending",
+    "size": "descending",
+    "kind": "ascending",
+    "label": "ascending",
+    "version": "ascending",
+    "comments": "ascending",
+}
+
+# .. License configuration .....................................................
+
+# Text in the license configuration is stored in the resources, which means
+# it gets stored in a legacy Mac encoding according to the language.  dmgbuild
+# will *try* to convert Unicode strings to the appropriate encoding, *but*
+# you should be aware that Python doesn't support all of the necessary encodings;
+# in many cases you will need to encode the text yourself and use byte strings
+# instead here.
+
+# Recognized language names are:
+#
+#  af_ZA, ar, be_BY, bg_BG, bn, bo, br, ca_ES, cs_CZ, cy, da_DK, de_AT, de_CH,
+#  de_DE, dz_BT, el_CY, el_GR, en_AU, en_CA, en_GB, en_IE, en_SG, en_US, eo,
+#  es_419, es_ES, et_EE, fa_IR, fi_FI, fo_FO, fr_001, fr_BE, fr_CA, fr_CH,
+#  fr_FR, ga-Latg_IE, ga_IE, gd, grc, gu_IN, gv, he_IL, hi_IN, hr_HR, hu_HU,
+#  hy_AM, is_IS, it_CH, it_IT, iu_CA, ja_JP, ka_GE, kl, ko_KR, lt_LT, lv_LV,
+#  mk_MK, mr_IN, mt_MT, nb_NO, ne_NP, nl_BE, nl_NL, nn_NO, pa, pl_PL, pt_BR,
+#  pt_PT, ro_RO, ru_RU, se, sk_SK, sl_SI, sr_RS, sv_SE, th_TH, to_TO, tr_TR,
+#  uk_UA, ur_IN, ur_PK, uz_UZ, vi_VN, zh_CN, zh_TW
+
+# license = {
+#     'default-language': 'en_US',
+#     'licenses': {
+#         # For each language, the text of the license.  This can be plain text,
+#         # RTF (in which case it must start "{\rtf1"), or a path to a file
+#         # containing the license text.  If you're using RTF,
+#         # watch out for Python escaping (or read it from a file).
+#         'English': b'''{\\rtf1\\ansi\\ansicpg1252\\cocoartf1504\\cocoasubrtf820
+# {\\fonttbl\\f0\\fnil\\fcharset0 Helvetica-Bold;\\f1\\fnil\\fcharset0 Helvetica;}
+# {\\colortbl;\\red255\\green255\\blue255;\\red0\\green0\\blue0;}
+# {\\*\\expandedcolortbl;;\\cssrgb\\c0\\c0\\c0;}
+# \\paperw11905\\paperh16837\\margl1133\\margr1133\\margb1133\\margt1133
+# \\deftab720
+# \\pard\\pardeftab720\\sa160\\partightenfactor0
+
+# \\f0\\b\\fs60 \\cf2 \\expnd0\\expndtw0\\kerning0
+# \\up0 \\nosupersub \\ulnone \\outl0\\strokewidth0 \\strokec2 Test License\\
+# \\pard\\pardeftab720\\sa160\\partightenfactor0
+
+# \\fs36 \\cf2 \\strokec2 What is this?\\
+# \\pard\\pardeftab720\\sa160\\partightenfactor0
+
+# \\f1\\b0\\fs22 \\cf2 \\strokec2 This is the English license. It says what you are allowed to do with this software.\\
+# \\
+# }''',
+#     },
+#     'buttons': {
+#         # For each language, text for the buttons on the licensing window.
+#         #
+#         # Default buttons and text are built-in for the following languages:
+#         #
+#         #   English (en_US), German (de_DE), Spanish (es_ES), French (fr_FR),
+#         #   Italian (it_IT), Japanese (ja_JP), Dutch (nl_NL), Swedish (sv_SE),
+#         #   Brazilian Portuguese (pt_BR), Simplified Chinese (zh_CN),
+#         #   Traditional Chinese (zh_TW), Danish (da_DK), Finnish (fi_FI),
+#         #   Korean (ko_KR), Norwegian (nb_NO)
+#         #
+#         # You don't need to specify them for those languages; if you fail to
+#         # specify them for some other language, English will be used instead.
+
+#         'en_US': (
+#             b'English',
+#             b'Agree',
+#             b'Disagree',
+#             b'Print',
+#             b'Save',
+#             b'If you agree with the terms of this license, press "Agree" to '
+#             b'install the software.  If you do not agree, press "Disagree".'
+#         ),
+#     },
+# }
+</file>
+
+<file path="app/ppolona.py">
+#!/usr/bin/env python3
+
+from pypolona.__main__ import *
+
+main()
+</file>
+
+<file path="pypolona/__init__.py">
+__version__ = "1.6.2"
+
+# Removed unused import: from ezgooey import logging
+</file>
+
+<file path="pypolona/__main__.py">
+#!/usr/bin/env python3
+"""
+ppolona
+-------
+Copyright (c) 2020 Adam Twardoch <adam+github@twardoch.com>
+MIT license. Python 3.9+
+
+Search in and download from Polona.pl
+Usage: 'ppolona' for GUI, 'ppolona -h' for CLI
+"""
+
+import pathlib
+import argparse
+from ezgooey import ezgooey_decorator as ezgooey
+from ezgooey import logging as ezgooey_logging
+
+try:
+    from .polona import Polona
+except ImportError:
+    from pypolona.polona import Polona  # type: ignore[no-redef]
+
+try:
+    from .__init__ import __version__ as version
+except ImportError:
+    from pypolona import __version__ as version  # type: ignore[no-redef]
+
+
+# from cli2gui import Cli2Gui
+
+ezgooey_logging.init(level=ezgooey_logging.INFO)
+log = ezgooey_logging.logger("pypolona")
+
+GUI_NAME = f"PyPolona {version}"
+CLI_NAME = "ppolona"
+DESCRIPTION = f"Search in and download from Polona.pl. GUI: Help > {GUI_NAME} Help. CLI: {CLI_NAME} -h"
+
+
+@ezgooey( # type: ignore
+    advanced=True,
+    auto_start=False,
+    default_size=(800, 600),
+    disable_progress_bar_animation=False,
+    disable_stop_button=False,
+    group_by_type=True,
+    header_show_title=True,
+    header_height=80,
+    hide_progress_msg=False,
+    optional_cols=1,
+    program_description=None,
+    program_name=GUI_NAME,
+    progress_expr=None,
+    progress_regex=None,
+    required_cols=1,
+    richtext_controls=True,
+    show_failure_modal=True,
+    show_success_modal=False,
+    suppress_gooey_flag=True,
+    tabbed_groups=True,
+    target=None,
+    use_legacy_titles=True,
+    menu=[
+        {
+            "name": "Help",
+            "items": [
+                {
+                    "type": "AboutDialog",
+                    "menuTitle": "About",
+                    "name": GUI_NAME,
+                    "description": "Click the link for more info",
+                    "website": "https://twardoch.github.io/pypolona/",
+                    "license": "MIT",
+                },
+                {
+                    "type": "Link",
+                    "menuTitle": f"{GUI_NAME} Documentation",
+                    "url": "https://twardoch.github.io/pypolona/",
+                },
+            ],
+        }
+    ],
+)
+def gui():
+    return cli()
+
+
+# @Cli2Gui(auto_enable=True, parser="argparse", gui="pysimpleguiweb",
+#          theme=None, darkTheme=None, sizes=None, image=None, program_name=None,
+#          program_description=None, max_args_shown=5)
+# def webgui():
+#     return cli()
+
+
+def cli():
+    parser = argparse.ArgumentParser(prog="ppolona", description=DESCRIPTION)
+
+    query_help = "query is a Polona.pl URL unless you choose search, advanced or ids"
+
+    parser_q = parser.add_argument_group(
+        "Input", gooey_options={"show_border": True, "columns": 2, "margin_top": 0}
+    )
+    parser_q.add_argument(
+        nargs="+",
+        dest="query",
+        type=str,
+        metavar="query",
+        help=query_help,
+        widget="Textarea",
+        gooey_options={
+            "show_help": True,
+            "height": 120,
+            "placeholder": "Enter Polona.pl URL or choose query type and enter search query, advanced query or space-separated Polona IDs",
+        },
+    )
+
+    command = parser_q.add_mutually_exclusive_group(
+        required=False,
+        gooey_options={
+            "show_help": True,
+            "title": "query type",
+        },
+    )
+    command.add_argument(
+        "-S",
+        "--search",
+        dest="search",
+        action="store_true",
+        help="Query is search query, see Options",
+        gooey_options={
+            "show_help": True,
+        },
+    )
+    command.add_argument(
+        "-A",
+        "--advanced",
+        dest="advanced",
+        action="store_true",
+        help="Query is advanced search query, see Documentation",
+        gooey_options={
+            "show_help": True,
+        },
+    )
+    command.add_argument(
+        "-I",
+        "--ids",
+        dest="ids",
+        action="store_true",
+        help="Query is space-separated IDs",
+        gooey_options={
+            "show_help": True,
+        },
+    )
+    parser_q.add_argument(
+        "-D",
+        "--download",
+        dest="download",
+        action="store_true",
+        help="Download found docs, see Options",
+        gooey_options={
+            "show_label": False,
+        },
+    )
+    parser_q.add_argument(
+        "-i",
+        "--images",
+        dest="images",
+        action="store_true",
+        help="Download JPEGs into subfolders instead of PDF",
+        gooey_options={
+            "show_label": False,
+        },
+    )
+    parser_s = parser.add_argument_group(
+        "Options", gooey_options={"show_border": True, "columns": 2, "margin_top": 0}
+    )
+    parser_s.add_argument(
+        "-l",
+        "--lang",
+        nargs="*",
+        dest="search_languages",
+        type=str,
+        metavar="language",
+        help="Space-separated languages: polski angielski niemiecki...",
+        gooey_options={
+            "show_label": False,
+            "placeholder": "polski angielski niemiecki",
+        },
+    )
+    parser_s.add_argument(
+        "-s",
+        "--sort",
+        dest="sort",
+        type=str,
+        choices=["score desc", "date desc", "date asc", "title asc", "creator asc"],
+        default="score desc",
+        help="Sort search results by score, date, title or creator (descending or ascending)",
+        gooey_options={
+            "show_label": False,
+        },
+    )
+    parser_s.add_argument(
+        "-f",
+        "--format",
+        dest="format",
+        type=str,
+        choices=["ids", "urls", "yaml", "json"],
+        default="ids",
+        help="Output search results in format",
+        gooey_options={"show_label": False, "full_width": False},
+    )
+    parser_s.add_argument(
+        "-o",
+        "--output",
+        dest="output",
+        type=str,
+        widget="FileSaver",
+        metavar="results_file",
+        help="Save search results to this file",
+        gooey_options={
+            "show_label": False,
+        },
+    )
+    parser_s.add_argument(
+        "-d",
+        "--download-dir",
+        dest="download_dir",
+        type=str,
+        default=str(pathlib.Path.home() / "Desktop" / "polona"),
+        widget="DirChooser",
+        metavar="download_folder",
+        help="Save downloaded docs in this folder",
+        gooey_options={
+            "show_label": False,
+        },
+    )
+    parser_s.add_argument(
+        "-M",
+        "--max-pages",
+        dest="max_pages",
+        type=int,
+        default=0,
+        metavar="num_pages",
+        help="Download max pages per doc (0: all)",
+        gooey_options={"show_label": False, "full_width": False},
+    )
+    parser_s.add_argument(
+        "-T",
+        "--no-text-pdf",
+        dest="textpdf_skip",
+        action="store_true",
+        help="Skip downloading searchable PDFs",
+        gooey_options={
+            "show_label": False,
+        },
+    )
+    parser_s.add_argument(
+        "-O",
+        "--no-overwrite",
+        dest="skip",
+        action="store_true",
+        help="Skip existing subfolders/PDFs",
+        gooey_options={
+            "show_label": False,
+        },
+    )
+
+    parser_q.add_argument("-V", "--version", action="version", version=f"%(prog)s {version}")
+
+    return parser
+
+
+def main(*args, **kwargs):
+    #    if '--web' in sys.argv:
+    #        sys.argv.pop(sys.argv.index('--web'))
+    #        parser = webgui(*args, **kwargs)
+    #    else:
+    if True:
+        parser = gui(*args, **kwargs)
+    opts = parser.parse_args()
+    if opts:
+        opts_dict = vars(opts)
+        Polona(**opts_dict)
+
+
+if __name__ == "__main__":
+    main()
+</file>
+
+<file path="pypolona/polona.py">
+#!/usr/bin/env python3
+"""
+pypolona library
+----------------
+Copyright (c) 2020 Adam Twardoch <adam+github@twardoch.com>
+MIT license. Python 3.9+
+"""
+
+import json
+import mimetypes
+import os
+import os.path
+import re
+import sys
+import urllib.parse
+from typing import Any  # For type hints
+
+import dateutil.parser
+import html2text  # type: ignore[import-untyped]
+import img2pdf  # type: ignore[import-untyped]
+import lxml2json  # type: ignore[import-untyped]
+import pikepdf  # type: ignore[import-untyped]
+import requests
+
+# Import logging from ezgooey, as it's initialized there
+from ezgooey import logging as ezgooey_logging
+from lxml import etree
+from orderedattrdict import AttrDict as ad  # type: ignore[import-untyped]
+from yaplon import oyaml  # type: ignore[import-untyped]
+
+try:
+    # This specific version import is used in pdf_add_meta.
+    # It refers to the package's own version.
+    from .__init__ import __version__
+except ImportError:
+    from pypolona import __version__  # type: ignore[no-redef]
+
+
+log = ezgooey_logging.logger("pypolona")
+
+
+class Polona:
+    def __init__(self, **opts: Any):
+        log.debug(opts)
+        self.o = ad(opts)
+        self.ids: list[str] = []
+        self.hits: ad | None = None
+        self.dldir: str | None = None
+
+        if self.o.ids:
+            self.ids = self.o.query
+        elif self.o.search or self.o.advanced:
+            self.search()
+            if self.o.download:
+                if self.o.output:
+                    self.save_search_results()
+            else:
+                self.save_search_results()
+        else:
+            self.parse_urls(self.o.query)
+
+        if self.o.download:
+            self.download()
+            log.success(f"Finished downloading into file://{self.o.download_dir}")
+
+    def parse_urls(self, urls: list[str]):
+        RE_URL = r"^https://polona\.pl/item/.*?,([A-Za-z0-9]+)/.*"
+        for url in urls:
+            mo = re.search(RE_URL, url, re.M)
+            if mo:
+                self.ids.append(mo.group(1))
+
+    def _requests_encode_dict(self, dic: dict, name: str) -> str:
+        url_str = ""  # Renamed url to url_str
+        for k, v in dic.items():
+            fragm = f"{name}[{k}]"
+            if isinstance(v, list):  # Use isinstance for type checking
+                for i in v:
+                    url_str += f"&{fragm}[]={i}"
+            else:
+                url_str += f"&{fragm}={v}"
+        return url_str
+
+    def search(self):
+        filters: dict[str, Any] = {"public": 1}  # Type hint for filters
+        if self.o.search_languages:
+            filters["language"] = self.o.search_languages
+        params: dict[str, Any] = {  # Type hint for params
+            "query": " ".join(self.o.query),
+            "sort": self.o.sort,
+            "size": 150,
+        }
+        if self.o.advanced:
+            params["advanced"] = 1
+        base_url = "https://polona.pl/api/entities/"  # Renamed url to base_url
+        urlparams = urllib.parse.urlencode(params) + self._requests_encode_dict(
+            filters, "filters"
+        )
+        log.debug(f"{base_url}?{urlparams}")
+        r = requests.get(f"{base_url}?{urlparams}")
+        jhits = None
+        try:
+            jhits = ad(r.json())
+        except Exception as e:  # Catch specific exception
+            h = html2text.HTML2Text()  # type: ignore[no-untyped-call]
+            log.critical(f"Error parsing JSON response: {e}\n{h.handle(r.text)}")  # type: ignore[no-untyped-call]
+        self.ids = []
+        if jhits:
+            self.hits = ad()
+            # Renamed jhit to jhit_data to avoid PLW2901/clearer assignment
+            for jhit_data in jhits.get("hits", ad()):
+                current_jhit = ad(jhit_data)  # Processed jhit data
+                if current_jhit.id:
+                    self.ids.append(current_jhit.id)
+                    hit = ad()
+                    hit.id = current_jhit.id
+                    hit.title = current_jhit.title
+                    hit.slug = current_jhit.slug
+                    if year := current_jhit.date:
+                        hit.year = dateutil.parser.parse(year).year
+                    hit.url = f"https://polona.pl/item/{hit.slug},{hit.id}/"
+                    self.hits[current_jhit.id] = hit
+
+    def save_search_results(self):
+        output_str: str  # Type hint for output_str
+        if self.o.format == "yaml":
+            output_str = oyaml.yaml_dump(self.hits)  # type: ignore[no-untyped-call]
+        elif self.o.format == "json":
+            output_str = json.dumps(self.hits)
+        elif self.o.format == "urls":
+            output_str = "\n".join([hit.url for hit in self.hits.values()])
+        else:
+            output_str = " ".join(self.hits.keys())
+
+        if self.o.output:
+            with open(
+                self.o.output, "w", encoding="utf-8"
+            ) as outfile:  # Ensure encoding and use with
+                outfile.write(output_str)
+        else:
+            sys.stdout.write(output_str)  # Use sys.stdout.write for consistency
+            sys.stdout.write("\n")  # Add newline if printing to stdout
+
+        if self.o.output:
+            log.success(f"Search results saved in: file://{self.o.output}")
+
+    def can_download(self) -> bool:
+        can_dl = False
+        if self.ids and self.o.download:  # Check if self.ids is not empty
+            self.dldir = os.path.abspath(self.o.download_dir)
+            if not os.path.isdir(self.dldir):
+                try:
+                    os.makedirs(self.dldir)
+                except Exception as e:  # Catch specific exception
+                    log.critical(f"Cannot create dir file://{self.dldir}: {e}")
+            if os.path.isdir(self.dldir):
+                can_dl = True
+        return can_dl
+
+    def _process_hit(self, hit: ad) -> ad:
+        hit.subdir_parts: list[str] = []  # Use a temporary list for clarity
+        year = hit.date
+        if year:
+            parsed_year = dateutil.parser.parse(year).year
+            hit.year = parsed_year  # Store parsed year if needed elsewhere
+            hit.subdir_parts.append(f"{parsed_year}-")
+        hit.subdir_parts.append(hit.slug[:64])
+        hit.subdir_parts.append(f"-{hit.id}")
+        hit.subdir = "".join(hit.subdir_parts)  # Join parts
+        hit.url = f"https://polona.pl/item/{hit.slug},{hit.id}/"
+        return hit
+
+    def _process_textpdf(self, hit: ad) -> ad:  # Added type hint
+        return hit
+
+    def _process_dc(self, hit: ad) -> ad:  # Added type hint
+        r = requests.get(hit.dc_url, stream=True)
+        content_type = r.headers.get("content-type", "")
+        if ".xml" in mimetypes.guess_all_extensions(content_type.split(";")[0]):
+            try:
+                # Ensure r.content is bytes for etree.XML
+                xml_content = r.content
+                if isinstance(xml_content, str):
+                    xml_content = xml_content.encode("utf-8")
+
+                dc_root_xml = etree.XML(xml_content)
+                # Check if dc_root_xml has children before accessing dc_root_xml[0]
+                if len(dc_root_xml):  # type: ignore[arg-type]
+                    dc_data_converted = lxml2json.convert(  # type: ignore[no-untyped-call]
+                        dc_root_xml[0],  # type: ignore[index]
+                        ordered=True,
+                        alwaysList=[
+                            ".//language",
+                            ".//country",
+                            ".//contributor",
+                            ".//creator",
+                            ".//subject",
+                            ".//tags",
+                        ],
+                    )
+                    if dc := dc_data_converted.get(  # type: ignore[union-attr]
+                        "{http://www.w3.org/1999/02/22-rdf-syntax-ns#}Description",
+                        {},
+                    ):
+                        hit.dc = dc
+            except etree.XMLSyntaxError as e:
+                log.error(f"Failed to parse DC XML for {hit.id}: {e}")
+        return hit
+
+    def _process_resources(self, hit: ad) -> ad:  # Added type hint
+        if not hit.resources:  # Guard against missing resources
+            log.warning(f"Hit {getattr(hit, 'id', '<unknown>')} has no resources. This may indicate upstream data issues.")
+            return hit
+        for resource in hit.resources:
+            mime_type = resource.get("mime", "")
+            if ".pdf" in mimetypes.guess_all_extensions(mime_type):
+                hit.textpdf_url = resource.get("url", None)
+            if ".xml" in mimetypes.guess_all_extensions(mime_type):
+                hit.dc_url = resource.get("url", None)
+                if hit.dc_url:
+                    hit = self._process_dc(hit)  # Assign back
+        return hit
+
+    def download_id(self, item_id: str, progress: str = "") -> bool:
+        success = False
+        api_url = (
+            f"https://polona.pl/api/entities/{item_id}"  # Use f-string, rename var
+        )
+        log.debug(api_url)
+        r = requests.get(api_url)
+        hit_data: ad | None = None  # Type hint, rename var
+        try:
+            hit_data = ad(r.json())
+        except Exception as e:  # Catch specific exception
+            h = html2text.HTML2Text()  # type: ignore[no-untyped-call]
+            log.critical(f"Failed to parse JSON for {item_id}: {e}\n{h.handle(r.text)}")  # type: ignore[no-untyped-call]
+            return False  # Early exit if JSON parsing fails
+
+        if hit_data and hasattr(hit_data, "id") and hit_data.id:  # Check structure
+            current_hit = self._process_hit(
+                hit_data
+            )  # Use current_hit for processed data
+            current_hit.textpdf_url = None  # Initialize these attributes
+            current_hit.dc_url = None
+            if hasattr(current_hit, "resources") and current_hit.resources:
+                current_hit = self._process_resources(current_hit)
+
+            if (
+                hasattr(current_hit, "scans")
+                and current_hit.scans
+                and len(current_hit.scans) > 0
+            ):
+                success = self.save_downloaded(current_hit, progress)
+        elif hit_data:
+            log.warn(
+                f"Hit data for {item_id} does not have an 'id' or is empty: {hit_data}"
+            )
+        return success
+
+    def save_downloaded(self, hit: ad, progress: str) -> bool:
+        if self.dldir is None:  # Guard against unset download directory
+            log.error("Download directory (self.dldir) is not set.")
+            return False
+
+        success = True  # Assume success initially
+        out_path_base = os.path.join(self.dldir, hit.subdir)  # Base path for item
+        textpdf_path = None
+
+        if self.o.images:
+            desttext = "folder"
+            # Ensure directory exists for images and YAML
+            os.makedirs(out_path_base, exist_ok=True)
+            yaml_path = os.path.join(out_path_base, f"{hit.id}.yaml")
+            if hit.textpdf_url:
+                textpdf_path = os.path.join(out_path_base, f"{hit.id}_text.pdf")
+            # For images, out_path_final is the directory itself
+            out_path_final = out_path_base
+        else:
+            desttext = "PDF"
+            # For PDF, out_path_base is the filename without extension yet
+            yaml_path = f"{out_path_base}.yaml"
+            if hit.textpdf_url:
+                textpdf_path = f"{out_path_base}_text.pdf"
+            out_path_final = f"{out_path_base}.pdf"
+
+        should_overwrite = True
+        num_scans_available = len(hit.scans) if hasattr(hit.scans, "__len__") else 0
+
+        pages_to_download_count = num_scans_available
+        if self.o.max_pages > 0:
+            pages_to_download_count = min(num_scans_available, self.o.max_pages)
+
+        log.info(
+            f"{progress}: Downloading {pages_to_download_count}/{num_scans_available} pages into {hit.subdir[:40]}..."
+        )
+
+        if os.path.exists(out_path_final):
+            if self.o.skip:
+                should_overwrite = False
+                log.info(f"Skipping {desttext} {out_path_final}")
+            else:
+                log.warn(f"Overwriting {desttext} {out_path_final}")
+
+        # Save YAML metadata for images (always, if images mode, even if skipping image download)
+        if self.o.images:
+            try:
+                with open(yaml_path, "w", encoding="utf-8") as yamlfile:
+                    oyaml.dump(hit, yamlfile)  # type: ignore[no-untyped-call]
+            except OSError as e:
+                log.error(f"Failed to write YAML file {yaml_path}: {e}")
+                success = False  # Consider this a failure
+
+        if (
+            should_overwrite and success
+        ):  # Proceed only if not skipping and YAML write (if any) was okay
+            memimages: list[bytes] = []
+            scans_to_process = (
+                hit.scans[:pages_to_download_count]
+                if hasattr(hit.scans, "__getitem__")
+                else []
+            )
+
+            for page_idx, scan_data in enumerate(scans_to_process):
+                progress_page = (
+                    f"[page {page_idx + 1:03d}/{pages_to_download_count:03d}]"
+                )
+                jpeg_filename = ""
+                if self.o.images:
+                    jpeg_filename = f"{hit.id}-{page_idx + 1:04d}.jpg"
+
+                log.info(f"{progress} {progress_page}: downloading")
+
+                for res_data in scan_data.get("resources", []):
+                    if res_data.get("mime") == "image/jpeg":
+                        scan_url_str = res_data.get("url")
+                        if scan_url_str:
+                            img_bytes = self.download_scan(scan_url_str)
+                            if img_bytes:
+                                if self.o.images:
+                                    # out_path_final is the directory for images mode
+                                    jpeg_full_path = os.path.join(
+                                        out_path_final, jpeg_filename
+                                    )
+                                    try:
+                                        with open(jpeg_full_path, "wb") as jpeg_file:
+                                            jpeg_file.write(img_bytes)
+                                    except OSError as e:
+                                        log.error(
+                                            f"Failed to write JPEG {jpeg_full_path}: {e}"
+                                        )
+                                        success = False  # Mark as failure
+                                else:
+                                    memimages.append(img_bytes)
+                            else:
+                                log.error(f"Cannot download {scan_url_str}")
+                                success = False  # Mark as failure for this page
+                        break  # Found jpeg, process next scan_data
+
+            if not self.o.images and memimages:  # If PDF mode and images were collected
+                log.info(f"Saving {out_path_final}")
+                pdf_save_ok = self.pdf_save(out_path_final, memimages)
+                if pdf_save_ok:
+                    meta_add_ok = self.pdf_add_meta(out_path_final, hit)
+                    if meta_add_ok:
+                        log.info(f"Saved high-res image PDF to file://{out_path_final}")
+                    success = success and meta_add_ok
+                else:
+                    success = False
+            elif not self.o.images and not memimages and pages_to_download_count > 0:
+                # PDF mode, but no images downloaded (e.g. all downloads failed or no JPEG resources)
+                log.error(f"No images downloaded for PDF: {out_path_final}")
+                success = False
+
+        # Process text PDF regardless of main content overwrite status, if path exists and not skipping text PDFs
+        # However, its success should contribute to the overall success if it was attempted.
+        if textpdf_path and not self.o.textpdf_skip:
+            attempt_text_pdf_download = True
+            if os.path.exists(textpdf_path) and self.o.skip:
+                log.info(f"Skipping existing text PDF {textpdf_path}")
+                attempt_text_pdf_download = (
+                    False  # Don't try to download or add meta if skipping existing
+                )
+
+            if attempt_text_pdf_download:
+                text_pdf_dl_ok = self.download_save_textpdf(
+                    hit.textpdf_url, textpdf_path
+                )
+                if text_pdf_dl_ok:
+                    text_pdf_meta_ok = self.pdf_add_meta(textpdf_path, hit)
+                    if text_pdf_meta_ok:
+                        log.info(f"Saved searchable text PDF to file://{textpdf_path}")
+                    success = (
+                        success and text_pdf_meta_ok
+                    )  # Overall success depends on this too
+                else:
+                    success = False  # Failed to download/save text PDF
+
+        return success
+
+    def pdf_add_meta(self, pdf_path: str, hit: ad) -> bool:
+        try:
+            pdf = pikepdf.open(pdf_path, allow_overwriting_input=True)  # type: ignore[no-untyped-call]
+            with pdf.open_metadata(set_pikepdf_as_editor=False) as meta:  # type: ignore[no-untyped-call]
+                meta["xmp:CreatorTool"] = (
+                    f"PyPolona {__version__}"  # Use imported __version__
+                )
+
+                id_val = hit.get("id")  # Renamed id to id_val
+                meta_ids: list[Any] = []  # Renamed ids to meta_ids, allow Any initially
+                if id_val:
+                    meta_ids.append(id_val)
+                    meta["dc:identifier"] = str(id_val)  # Ensure string
+
+                dc = hit.get("dc", ad())  # Default to empty AttrDict
+
+                if hit.get("isbn"):
+                    meta["prism2:isbn"] = str(hit["isbn"])
+                    meta_ids.append(hit["isbn"])
+                if hit.get("issn"):
+                    meta["prism2:issn"] = str(hit["issn"])  # Corrected from hit['isbn']
+                    meta_ids.append(hit["issn"])
+                if hit.get("academica_id"):
+                    meta_ids.append(hit["academica_id"])
+                if hit.get("oclc_no"):
+                    meta_ids.append(hit["oclc_no"])
+
+                meta_ids.extend(hit.get("call_no", []))
+                if meta_ids:
+                    # pikepdf expects list of strings for xmp:Identifier
+                    meta["xmp:Identifier"] = [str(i) for i in set(meta_ids)]
+
+                if hit.get("title"):
+                    meta["dc:title"] = str(hit["title"])
+                if hit.get("date"):
+                    meta["dc:date"] = [
+                        str(hit["date"])
+                    ]  # Ensure it's a list of strings
+                if hit.get("date_descriptive"):
+                    meta["prism2:timePeriod"] = [str(hit["date_descriptive"])]
+                if hit.get("url"):
+                    meta["dc:source"] = str(hit["url"])
+                    meta["prism2:url"] = str(hit["url"])
+
+                author = str(hit.get("creator_name", "") or hit.get("creator", ""))
+                contributors = hit.get("contributor", [])
+                if isinstance(contributors, list) and contributors:
+                    meta["dc:contributor"] = [str(c) for c in set(contributors)]
+                    if not author:  # Check if author still empty
+                        author = str(contributors[0])
+
+                meta["dc:creator"] = [author.replace(",", " ").replace("  ", " ")]
+                # meta["dc:source"] is already set if hit.url exists
+
+                dc_langs_list = dc.get("language", [])
+                if isinstance(dc_langs_list, list) and dc_langs_list:
+                    valid_langs = [
+                        str(s["text"]).strip()
+                        for s in dc_langs_list
+                        if isinstance(s, dict) and "text" in s
+                    ]
+                    if valid_langs:
+                        meta["dc:language"] = list(set(valid_langs))
+
+                rights_list_val = hit.get("rights", [])
+                if isinstance(rights_list_val, list) and rights_list_val:
+                    rights_str_val = ";".join(
+                        str(r) for r in rights_list_val
+                    )  # Ensure strings
+                    meta["dc:rights"] = rights_str_val
+                    meta["xmpRights:WebStatement"] = rights_str_val
+
+                categories_list = hit.get("categories", [])
+                if (
+                    isinstance(categories_list, list) and categories_list
+                ):  # Check if list and not empty
+                    str_categories = [str(c) for c in categories_list]
+                    meta["dc:type"] = list(set(str_categories))
+                    meta["prism2:contentType"] = "; ".join(str_categories)
+
+                keywords_agg: list[Any] = []  # Renamed keywords to keywords_agg
+                keywords_agg.extend(hit.get("subject", []))
+                keywords_agg.extend(hit.get("keywords", []))
+                # categories already added to dc:type, avoid duplicate in keywords if not intended
+                # keywords_agg.extend(hit.get("categories", []))
+                keywords_agg.extend(hit.get("metatypes", []))
+                keywords_agg.extend(hit.get("projects", []))
+
+                dc_tags_list = dc.get("tags", [])
+                if isinstance(dc_tags_list, list) and dc_tags_list:
+                    keywords_agg.extend(
+                        s["text"]
+                        for s in dc_tags_list
+                        if isinstance(s, dict) and "text" in s
+                    )
+
+                if keywords_agg:
+                    # Ensure all keywords are strings and then get unique sorted list
+                    unique_keywords_str = sorted(
+                        list(set(str(k) for k in keywords_agg))
+                    )
+                    meta["dc:subject"] = unique_keywords_str
+                    meta["pdf:Keywords"] = "; ".join(unique_keywords_str)
+
+                publisher_list: list[str] = []  # Renamed publisher to publisher_list
+                if hit.get("publisher"):
+                    publisher_list.append(str(hit["publisher"]))
+                if hit.get("imprint"):
+                    publisher_list.append(str(hit["imprint"]))
+                if publisher_list:
+                    meta["dc:publisher"] = list(set(publisher_list))
+
+                location_parts_list: list[str] = []  # Renamed location_parts
+                location_parts_list.extend(str(p) for p in hit.get("publish_place", []))
+                location_parts_list.extend(str(c) for c in hit.get("country", []))
+                if location_parts_list:
+                    meta["prism2:location"] = ", ".join(location_parts_list)
+
+                description_parts_list: list[
+                    str
+                ] = []  # Renamed description to description_parts_list
+                if hit.get("series"):
+                    series_str = str(hit["series"])
+                    meta["prism2:seriesTitle"] = series_str
+                    description_parts_list.append(series_str)
+
+                dc_freq_text = dc.get("frequency", {}).get("text")
+                if dc_freq_text:
+                    dc_freq_str = str(dc_freq_text)
+                    meta["prism2:publishingFrequency"] = dc_freq_str
+                    description_parts_list.append(dc_freq_str)
+                if hit.get("press_title"):
+                    press_title_str = str(hit["press_title"])
+                    meta["prism2:publicationName"] = press_title_str
+                    description_parts_list.append(press_title_str)
+
+                description_parts_list.extend(str(n) for n in hit.get("notes", []))
+                description_parts_list.extend(
+                    str(pd) for pd in hit.get("physical_description", [])
+                )
+                description_parts_list.extend(str(s) for s in hit.get("sources", []))
+                description_parts_list.extend(str(p) for p in hit.get("projects", []))
+
+                if description_parts_list:
+                    description_text_str = "; ".join(description_parts_list)  # Renamed
+                    meta["dc:description"] = description_text_str
+            pdf.save(pdf_path)  # type: ignore[no-untyped-call]
+            return True
+        except Exception as e:
+            log.error(f"Failed to add metadata to PDF {pdf_path}: {e}")
+            return False
+
+    def pdf_save(self, pdf_path: str, memimages: list[bytes]) -> bool:
+        if not memimages:  # Check if empty
+            return False
+        try:
+            with open(pdf_path, "wb") as pdffile:
+                pdffile.write(img2pdf.convert(memimages))  # type: ignore[no-untyped-call]
+            return True
+        except OSError as e:
+            log.error(f"Failed to write PDF {pdf_path}: {e}")
+            return False
+        except Exception as e:  # Catch other img2pdf errors
+            log.error(f"Failed to convert images to PDF for {pdf_path}: {e}")
+            return False
+
+    def download_save_textpdf(self, url_str: str, pdf_path: str) -> bool:
+        try:
+            r = requests.get(url_str, stream=True)
+            r.raise_for_status()  # Check for HTTP errors
+            content_type = r.headers.get("content-type", "")
+            if (
+                ".pdf" in mimetypes.guess_all_extensions(content_type)
+                or "application/pdf" in content_type
+            ):
+                with open(pdf_path, "wb") as pdf_file:
+                    pdf_file.write(r.content)
+                return True
+            else:
+                # Enhanced JPEG detection
+                if content_type.lower().startswith("image/jpeg") or content_type.lower().startswith("image/pjpeg"):
+                    # Content type is a JPEG variant
+                    return r.content
+                # Fallback: check JPEG file signature (magic number)
+                if r.content[:2] == b'\xff\xd8' and r.content[-2:] == b'\xff\xd9':
+                    # JPEG files start with FF D8 and end with FF D9
+                    log.info(f"JPEG detected by file signature for {url_str}")
+                    return r.content
+                log.warn(f"Content type for {url_str} is not PDF or JPEG: {content_type}")
+                return False
+        except requests.RequestException as e:
+            log.error(f"Failed to download text PDF from {url_str}: {e}")
+            return False
+        except OSError as e:
+            log.error(f"Failed to write text PDF to {pdf_path}: {e}")
+            return False
+
+    def download_scan(self, url_str: str) -> bytes | None:
+        try:
+            r = requests.get(url_str, stream=True)
+            r.raise_for_status()
+            content_type = r.headers.get("content-type", "")
+            # Check common JPEG mime types and extensions
+            if (
+                ".jpg" in mimetypes.guess_all_extensions(content_type)
+                or ".jpeg" in mimetypes.guess_all_extensions(content_type)
+                or "image/jpeg" in content_type
+            ):
+                return r.content
+            else:
+                log.warn(f"Content type for scan {url_str} is not JPEG: {content_type}")
+                return None
+        except requests.RequestException as e:
+            log.error(f"Failed to download scan from {url_str}: {e}")
+            return None
+
+    def download_ids(self):
+        all_ids_local = self.ids[
+            :
+        ]  # Create a copy if modification during iteration is a concern
+        total = len(all_ids_local)
+        for idx, item_id_local in enumerate(all_ids_local):
+            progress_str = f"[doc {idx + 1:03d}/{total:03d}]"
+            if self.download_id(
+                item_id_local, progress_str
+            ):  # item_id_local was already correctly named
+                log.info(f"{progress_str}: {item_id_local} processed")
+
+    def download(self):
+        if self.can_download():
+            self.download_ids()
+</file>
+
+<file path="_config.yml">
+theme: jekyll-theme-minimal
+logo: "https://github.com/twardoch/pypolona/raw/master/pypolona/icons/program_icon.png"
+show_downloads: true
+</file>
+
+<file path=".dccache">
+[{"/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/setup.py":"1","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/app/dmgbuild_settings.py":"2","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/app/ppolona.py":"3","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/pypolona/__init__.py":"4","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/pypolona/__main__.py":"5","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/pypolona/polona.py":"6","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/pip_deploy.py":"7","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/setup.py":"8","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/__init__.py":"9","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/__main__.py":"10","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/__init__.py":"11","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/application.py":"12","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/cli.py":"13","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/events.py":"14","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/formatters.py":"15","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/image_repository.py":"16","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/imageutil.py":"17","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/processor.py":"18","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/pubsub.py":"19","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/seeder.py":"20","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/three_to_four.py":"21","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/validators.py":"22","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/images/__init__.py":"23","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/languages/__init__.py":"24","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/tests/__init__.py":"25","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/tests/all_widgets.py":"26","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/tests/all_widgets_subparser.py":"27","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/tests/auto_start.py":"28","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/tests/harness.py":"29","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/tests/test_application.py":"30","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/tests/test_argparse_to_json.py":"31","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/tests/test_chooser_results.py":"32","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/tests/test_cmd_args.py":"33","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/tests/test_config_generator.py":"34","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/tests/test_constraints.py":"35","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/tests/test_dropdown.py":"36","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/tests/test_formatters.py":"37","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/tests/test_header.py":"38","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/tests/test_parent_inheritance.py":"39","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/tests/test_processor.py":"40","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/tests/test_radiogroup.py":"41","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/python_bindings/__init__.py":"42","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/python_bindings/argparse_to_json.py":"43","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/python_bindings/cmd_args.py":"44","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/python_bindings/config_generator.py":"45","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/python_bindings/constants.py":"46","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/python_bindings/constraints.py":"47","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/python_bindings/gooey_decorator.py":"48","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/python_bindings/gooey_parser.py":"49","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/python_bindings/parser_exceptions.py":"50","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/util/__init__.py":"51","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/util/functional.py":"52","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/__init__.py":"53","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/config.py":"54","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/console.py":"55","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/footer.py":"56","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/header.py":"57","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/menubar.py":"58","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/modals.py":"59","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/sidebar.py":"60","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/tabbar.py":"61","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/containers/__init__.py":"62","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/containers/application.py":"63","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/lang/__init__.py":"64","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/lang/i18n.py":"65","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/lang/i18n_config.py":"66","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/util/__init__.py":"67","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/util/casting.py":"68","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/util/filedrop.py":"69","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/util/freeze.py":"70","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/util/functional.py":"71","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/util/quoting.py":"72","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/util/taskkill.py":"73","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/util/wx_util.py":"74","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/tests/integration/__init__.py":"75","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/tests/integration/integ_autostart.py":"76","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/tests/integration/integ_subparser_demo.py":"77","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/tests/integration/integ_validations.py":"78","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/tests/integration/integ_widget_demo.py":"79","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/tests/integration/runner.py":"80","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/python_bindings/parser/gooey_parser.py":"81","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/layouts/__init__.py":"82","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/layouts/layouts.py":"83","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/util/__init__.py":"84","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/util/wrapped_static_text.py":"85","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/widgets/__init__.py":"86","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/widgets/bases.py":"87","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/widgets/basictextconsole.py":"88","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/widgets/beep_boop.py":"89","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/widgets/checkbox.py":"90","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/widgets/choosers.py":"91","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/widgets/command.py":"92","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/widgets/counter.py":"93","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/widgets/dropdown.py":"94","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/widgets/listbox.py":"95","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/widgets/password.py":"96","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/widgets/radio_group.py":"97","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/widgets/richtextconsole.py":"98","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/widgets/textarea.py":"99","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/widgets/textfield.py":"100","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/tests/integration/programs/__init__.py":"101","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/tests/integration/programs/all_widgets.py":"102","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/tests/integration/programs/all_widgets_subparser.py":"103","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/tests/integration/programs/auto_start.py":"104","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/tests/integration/programs/validations.py":"105","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/widgets/core/__init__.py":"106","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/widgets/core/chooser.py":"107","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/widgets/core/text_input.py":"108","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/widgets/dialogs/__init__.py":"109","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/widgets/dialogs/base_dialog.py":"110","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/widgets/dialogs/calender_dialog.py":"111","/Users/adam/Developer/vcs/github.twardoch/pub/pypolona/src/gooey/gooey/gui/components/widgets/dialogs/time_dialog.py":"112"},[2527,1600618327000,"113"],[8421,1600618885000,"114"],[87,1600164860000,"115"],[57,1600773929000,"116"],[7160,1618058224508.5078,"117"],[16355,1605549692000,"118"],[163,1599994487000,"119"],[1986,1599994487000,"120"],[272,1599994487000,"121"],[234,1599994487000,"122"],[22,1599994487000,"123"],[931,1599994487000,"124"],[580,1599994487000,"125"],[741,1599994487000,"126"],[2221,1599994487000,"127"],[1426,1599994487000,"128"],[676,1599994487000,"129"],[3851,1599994487000,"130"],[504,1599994487000,"131"],[751,1599994487000,"132"],[1497,1599994487000,"133"],[237,1599994487000,"134"],[0,1599994487000,"135"],[0,1599994487000,"135"],[0,1599994487000,"135"],[3295,1599994487000,"136"],[5811,1599994487000,"137"],[568,1599994487000,"138"],[666,1599994487000,"139"],[4216,1599994487000,"140"],[10360,1599994487000,"141"],[1134,1599994487000,"142"],[2799,1599994487000,"143"],[2235,1599994487000,"144"],[3091,1599994487000,"145"],[2976,1599994487000,"146"],[3510,1599994487000,"147"],[2142,1599994487000,"148"],[3437,1599994487000,"149"],[1699,1599994487000,"150"],[7303,1599994487000,"151"],[22,1599994487000,"123"],[20806,1599994487000,"152"],[2746,1599994487000,"153"],[6410,1599994487000,"154"],[340,1599994487000,"155"],[1767,1599994487000,"156"],[4712,1599994487000,"157"],[6767,1599994487000,"158"],[335,1599994487000,"159"],[0,1599994487000,"135"],[2473,1599994487000,"160"],[0,1599994487000,"135"],[8933,1599994487000,"161"],[3246,1599994487000,"162"],[4578,1599994487000,"163"],[3468,1599994487000,"164"],[2534,1599994487000,"165"],[1318,1599994487000,"166"],[2897,1599994487000,"167"],[1155,1599994487000,"168"],[0,1599994487000,"135"],[10348,1599994487000,"169"],[22,1599994487000,"123"],[861,1599994487000,"170"],[174,1599994487000,"171"],[22,1599994487000,"123"],[209,1599994487000,"172"],[269,1599994487000,"173"],[1689,1599994487000,"174"],[12,1599994487000,"175"],[259,1599994487000,"176"],[330,1599994487000,"177"],[2034,1599994487000,"178"],[239,1599994487000,"179"],[2380,1599994487000,"180"],[2171,1599994487000,"181"],[1421,1599994487000,"182"],[2142,1599994487000,"183"],[1692,1599994487000,"184"],[0,1599994487000,"135"],[0,1599994487000,"135"],[374,1599994487000,"185"],[0,1599994487000,"135"],[3801,1599994487000,"186"],[403,1599994487000,"187"],[6015,1599994487000,"188"],[214,1599994487000,"189"],[2571,1599994487000,"190"],[3225,1599994487000,"191"],[1367,1599994487000,"192"],[141,1599994487000,"193"],[357,1599994487000,"194"],[1930,1599994487000,"195"],[920,1599994487000,"196"],[345,1599994487000,"197"],[5925,1599994487000,"198"],[6863,1599994487000,"199"],[1215,1599994487000,"200"],[577,1599994487000,"201"],[0,1599994487000,"135"],[3211,1599994487000,"202"],[5658,1599994487000,"203"],[550,1599994487000,"204"],[794,1599994487000,"205"],[214,1599994487000,"206"],[6498,1599994487000,"207"],[1185,1599994487000,"208"],[0,1599994487000,"135"],[1644,1599994487000,"209"],[425,1599994487000,"210"],[369,1599994487000,"211"],"95869538f0509bd4a2281f78f8f5eb4e93c92db8f4edc3be60bd9d54ebc70dbd","c95b4c384fb45cb0989402aec45c5582fb72b84b6966e61a092241a115f977e4","d6b396e510dadeae554678417e2480945403e4ac321e74d177e1196c67c7491f","c3ca11336f1f8a738cbf62249fff2cce960bc3bdf0a9b0a01f25832d2124c153","4ef6f6bda814d88724435709b5d648e04d40e7f1428da5af6975ca20fa10d4ff","473b614a7da18fb3878b2b80fe654a558c706be5715b5a602623292c35f2d6d8","3efc09d742af482e63b22d4a0edade148d6d669936ac636196c836517f4e7af4","37ce04bae75fcb7e16a6ad62465379b98ccf863fbbac27235d63e4d110001c59","3b51dc2a0e96f4d6a79ee808b547aa72b7ba0133f7b8b64b30184d834d3a5b8d","15122d53c05d6405c04a488e4bfe780ded49d74a425f644a2cb3b71a49ee8b5d","59cd94aeab3d556c128bcfababe12505bb097f486a2ed1512d66611f9c23f90c","ad4cad24e44740d0db052880f3bdcfcaa8aed2fd4c58bee32db1243c5ff5f2c3","6ee3e8ba75dbf0c13a462e0bd0764f3a0566f8374e72e21cd1d37a0f6fb2730e","906c9efd84b83b953fd637503bd3e2ba8ce469575fc15eac353ce9afa48d9af5","6d971e4d0a3cd381230de5a84cbd39953c6a5729ec40e8e001faf49960e2261f","f77a2c2b7dcec2746b2c6e66e8dd3c4849ac1c256dea66eafb0b92688927c455","1e9fb9f9fe574b94ab9be3b1ac28500d11a54b87b4ba0ce943ef132eb300f0e3","b8d5a6ad19029005ae076be121870313448de4bc2e4b9478097f7f6620f2da75","2b0f5b7398c951ad32268f0249b9e4edd69963b9d85061a75ea7c8b7c727280d","8b0867ac017906d025db1199f34cf9277c894c38de9f9f6aa472e967ab81cc52","ac3796b7e58783350a3955ef6c8c7e23ce5339debe6fe6d2aa2296c1487d0cac","810d7a749fe594f48367ee31034cfe33aa354e33a19022a1763bd14ab20a9f2b","e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","db6a01169159679309e89e744093c00c771ac315d1ed3f39dc38199dd810f9c8","f709a726a3f29ea246208973e3d9900a70fb095a8ba73de6f0d3d50f2208e6f4","dffc2fb3dd70dbb9dfb7e13c697c97ce87cda909ee0bd569135aaa4bada32f01","13094c9c08a16cf239964f58d4d855aa7ded27362219a3ef24f9432a770e72d7","2e1f7c36e36a6a5cec53bea36f1e2d06e6d9475280cb11303ff94f3b808b861d","69e733ad83fe984bdfe507246a513daf9575b57f875358b70181e48e1d5b6fa9","7b1a9c6c6003afdb061c2c6e7cca39970a6e2b05eec87429fa1b2b930b703b72","df9e9e783457aec95fa9d0fc0f54d56917e6d5ebb350fb155a3371174401f96f","f0fd1191c8dc8c87d01149049c5148729af44178a934a8dac7ea841fe75636aa","54deee08491d7ac235d1581d86850629a28c80d9a414876e96c1c0bd441c61cc","101193e12a87861e08d4ca1ab7a7c0a71f21905afd03d67611d80615fe36a34e","5b0bcdd0e85411bc7277bcb7ed63558cdba2f747d189ba986a4b38c5994f7935","a5f858f3afa17ec8b4a3965be2e3eec987562151fc5a2f9bb0a3483116ec943b","35b282ee55d1bdd388dac55fdc366df87960de8a5635efc4d0c90a1843f15510","b02b046b777bde087223e536cc9cdf804a7f42d8f0f4bad681685b1bec41645d","6660aada5e34d6d27fe087ed64c3ab09e71eac33c182cea34fd2475f38984263","6acf24612abd443ebdb0d4e35e403af4dad0bc7045e5ea93947de5ade86ae0aa","c3b562786611dda2a3bea7b9bdda4a34b07b656f057d79a9227e5429f160e309","60685157ff7a1948e9e1e798470cdaf2ac5d50a0992eb993f84778058865e61d","2e079043dcf215311366ddac18db448e395650818a91f07476ac54ffb463b92a","28d362623913cef3f48634551f87414397bd743d4537db75f93ddd7fd644ff4d","96f5936a22e5b6f51d049eb898876ec8abd0ce3e74eebdb952c1ef5acc62fcbc","e0d95412238b4fc7ddae01c435bd785f7056f4597499f2104b49f61525ceed38","7586f71a280d108d2e8cc3c0d5ca61a98cc0fd8a3afe2b2d6106a7f247516043","02c2767472e1c533d30b88ce821d7f0afd5aafbfe7e72f7c021c8a38c49971a3","96d619646bd357b3befd049cd40968e5646d770ba112077133d1b41ae89a0c3f","97130525ab0ad52d5d922eae8566452dd2ebad53ae5d6ebbafc2f475114eab4d","2e00e5939e9703214d4204e84a32cf27350c8b23153ef9e2d87a7d2087c1478a","8f8391bb800bb637ccfa4ad4dc589a113d2a870dfc53bc9515036987a708af12","3c660efb3c3300795ffc4e3e1a2294bc779114088d306b7af90205b653c82be5","8eeae046d9aace13b8341550b1d8c44e343ebfc38a02ac80cf9986d59bade2c0","389ceace4eae004a9be6f2724ecd53cd8f519de0eaaf471b01b9d7927a1398d7","b8d5dff1d5a917da9b65862fbcd6ec0a0f4aba160c13d6e81a61262474c0d95b","c62c3dfe5e27bdbac1921e1ae204eed55b79fb128feb4aeef051514be8d15817","f1fe528dcbb9a1c23a5118c1aa17e97706df151f8c711ec7bd6a1134565a2dcc","79732f3d9abe2f99af339a39b3fb26fad6d7f9522fc735a5a1992baf77d60f3b","566bde8e90dc1683b1e554813629efc9a67e75a3515913cad4bb898a8916ca69","1299067413d08e5357ccac6acc3db3949acc1c9b206b6f9753a9af1b37f10fc0","2ac30134a0f2d3ac7d6b874439d0daa1d72c42552df9bb4739602cdbd98cfcd8","9c8d0d8dc8633ab1a8324bcd19679616729360171fde33812b12c335938f45dc","dcdc11091d3ac2bb988065e93d407d3766d026ddf441bae70a09bcc43bd64bfb","d95902646391f91969b611d3a9f9db6baa2e2176e33c5e9e856e6ab1a4aa8cc0","c68c3cdabaefc84f7421b7a0914e94c11ce4dd0bb81b90b82868c3907479adf5","5b892b339ce74f5c730d9397d67667fcc9ff1c6aee8ec1ff80072f2ed71ff4cf","916bb8209e08b66c9fda52bcf0984f8bbc454d99c8c0a1317be56d62ce6f113b","921385b43b076222c5feaf544d4d2fec5fa2a8b66caac6ce8f53ef0d6e5e5eba","a913f83fee7c98229cb7412080e75d9d68d119af4e6600f8995458671c663b1c","235a1209a1b251161a97157c31600f653c43b3c52214277aab1da43d0696c030","dd4fba24a5532788f576ea85111bb50263bec46c6917f1cbb59275e129255cd6","5ea7e8b1b82f509183ddf88b958be72da99c40546a2c83d839619b06624eceda","5925c148ae6182f0c077670d005c17794c123829661f4a89febdb192be978e6d","39438d1dfac2996a38ac6d45c73d38ab90bcc7a1308e11811b64d0908b781913","a3fc26163a857b1172fccf74bbd9eebf6d4636f1d8486c0c4f669bb4358b59ff","559c1483f95c9d55c8edf0de35e0d091d281022d03df05ba7793576e8166126c","c67b2a693095426467f4c6775d2f14a7f55f25f9bde29c7e328dcfafe9f3ec5a","d30eaf30e885439eec466b5d735dac8313630e7b5bcd6cd04a89ef8e8097c447","e4cf79068bf8935ea95f35d1c5810e7e3a92fe4778cab20f848d610c4cd10065","cf58f02c9ce634deda253975326e6ad8ca3b16d7b83558363dc46fc04e8b4588","15e5b05ab87d79015f5e07541fd518371b0cc69ff17e2bd01f97891ecd8687c5","66861a08dd04204500a2a8cac8ff5991417901967f73ac7751fb5bc6151b27a4","1bedb555c18f9f669097e1df32d92622a9731e91442b18781af853ec8ee3daa0","34d618e5f68fc9ff27bf0d101bfa884d22759edefcfdc74c074e56f8b9e10633","de29ae3968f6e0215b139fe86364063a15e4635b064913a3e1a53c60a5fa3e7d","54d7e6c6175ab6d853c5ae84cbebea008dc0d814989546c3ea7db54ffa6c11cc","2d55ca2ad5757715284a483708e1500c054d270d149f12d08dc0278a6abe6656","af76b4f96edb5499d8935565d55f9697474c618aee0359126fa23a626e82f1ec","078d29d7d672a14969456a6b17f5dfe5ddaa374862b00e2082d71cd04da1915f","e6ae30960b6aabb4981d20c4d1f6564dfd4bf237454ddc8a0697f67d61542de5","c85a4c68baca8726b4ead803753d92842e200b269b314ba390a5e63c2c50dbe8","858d56f882b8f112b6ed28414e51f511964cf851f07e4a23c1f31002e5a520fb","0191b7fd5cb5006eef5c31b8ce703cde6dff06fdef942fc4d534ad2611dc456f","b66465a687157d767da911f15a873088400122cce1a38330834fb93f9eef1d81","1d38c55de276fff74125ca732b7d1dc07f9811dc2305b7ca5910b42c103e0c44","b31f8060871625785b3298f3c94dc26cc76fc86167e3e85bbfe99f5f78d2ee84","cc0319c4a37d02ecc9ece8580d3ade1564d21c0710fedf638bd39e56d27370ff","23bd74455e8ecdc7c8472936f5a4f8c3e22826bdaf42dd4b903b104eb42671c0"]
+</file>
+
+<file path=".gitignore">
+.idea/
+
+*.code-workspace
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# celery beat schedule file
+celerybeat-schedule
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+
+app/build/\n# Hatch\n.hatch\n*.lock\n
+</file>
+
+<file path=".pre-commit-config.yaml">
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+    -   id: trailing-whitespace
+    -   id: end-of-file-fixer
+    -   id: check-yaml
+    -   id: check-toml
+    -   id: check-added-large-files
+-   repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.0
+    hooks:
+    -   id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+    -   id: ruff-format
+-   repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.10.1
+    hooks:
+    -   id: mypy
+        additional_dependencies: [
+            types-requests,
+            types-python-dateutil
+        ]
+        exclude: ^(docs/|app/|src/gooey/)
+</file>
+
+<file path="LICENSE">
+MIT License
+
+Copyright (c) 2020 Adam Twardoch <adam+github@twardoch.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+</file>
+
+<file path="pyproject.toml">
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pypolona"
+dynamic = ["version"] # Reverted to dynamic versioning
+description = "Image downloader for the polona.pl website of the Polish National Library"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+authors = [
+    { name = "Adam Twardoch", email = "adam+github@twardoch.com" },
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Environment :: MacOS X",
+    "Environment :: Win32 (MS Windows)",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+    "Topic :: Multimedia :: Graphics :: Capture :: Screen Capture",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "orderedattrdict>=1.6.0",
+    "Gooey>=1.0.8",
+    "ezgooey>=1.3.3",
+    "colored>=1.4.2",
+    "html2text>=2020.1.16",
+    "yaplon>=1.2.4",
+    "python-dateutil>=2.8.1",
+    "img2pdf>=0.4.0",
+    "pikepdf>=1.19.3", # Consider updating if possible, current is quite old
+    "lxml>=4.5.2", # Consider updating
+    "lxml2json>=0.2.6",
+    "requests", # Added, was missing from requirements.txt but used in code
+    "pywin32>=228; sys_platform == 'win32'",
+]
+
+keywords = ["polona", "jpeg", "downloader", "cli", "gui", "archive", "library", "national library of poland"]
+
+[project.urls]
+Homepage = "https://twardoch.github.io/pypolona/"
+"Source Code" = "https://github.com/twardoch/pypolona"
+"Bug Tracker" = "https://github.com/twardoch/pypolona/issues"
+
+[project.scripts]
+ppolona = "pypolona.__main__:main"
+
+[project.gui-scripts]
+pypolona-gui = "pypolona.__main__:main" # Assuming Gooey wraps the main CLI
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "mypy",
+    "pytest",
+    "pytest-cov",
+    "pre-commit",
+    "twine>=3.4.1",
+    "pyinstaller>=4.2", # Keep for building executables
+    "dmgbuild>=1.4.2; sys_platform == 'darwin'", # Keep for building DMG
+]
+
+[tool.hatch.version] # Restored
+source = "vcs"
+
+[tool.hatch.version.raw-options] # Restored
+version_scheme = "semver"
+local_scheme = "no-local-version"
+
+[tool.hatch.scripts]
+# Clean build artifacts
+clean = "hatch build --clean"
+# Build sdist and wheel
+build = "hatch build -t sdist -t wheel"
+# Alias for build that also cleans first
+build-clean = [
+  "clean",
+  "build",
+]
+# Check package metadata and structure
+check = "hatch build --check" # Might not be a valid hatch command, twine check is more common
+# Publish to PyPI (or other configured repo)
+# User needs to configure repositories in ~/.config/hatch/config.toml or use HATCH_INDEX_REPO, HATCH_INDEX_USER, HATCH_INDEX_AUTH
+publish = "hatch publish"
+# A script to run twine check (more robust for pre-publish checks)
+twine-check = "twine check dist/*"
+
+
+[tool.hatch.build.targets.sdist]
+include = ["/pypolona", "/README.md", "/LICENSE"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["pypolona"]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "PL", "TID", "RUF"] # Enabled isort, pylint, flake8-tidy-imports, ruff specific rules
+ignore = ["E501"] # Handled by formatter
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true # Start with this and reduce as stubs are added/found
+# Add more specific paths if needed, e.g. mypy pypolona
+# check_untyped_defs = true # Enable for stricter checking later
+# disallow_untyped_defs = true # Enable for even stricter checking later
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q --cov=pypolona --cov-report=term-missing"
+testpaths = [
+    "tests",
+]
+</file>
+
+<file path="README.md">
+# pypolona
+
+**[PyPolona](https://twardoch.github.io/pypolona/)** is a free and open-source GUI (graphical) app that allows you to search in and download images from the [Polona.pl](https://polona.pl/) digital library. It also works as a `ppolona` CLI (command-line) tool. And it’s a Python package available from [PyPI](https://pypi.org/project/pypolona/). The source is on [Github](https://github.com/twardoch/pypolona).
+
+**Polona.pl** provides digitized books, magazines, graphics, maps, music, fliers and manuscripts from collections of the National Library of Poland and co-operating institutions.
+
+With PyPolona, you can:
+
+- search Polona
+- print or save the search results as a list of URLs, a YAML file, a JSON file and a simple list of Polona document IDs
+- download all or some high-resolution images from Polona for the search results, or for a provided list of Polona document IDs
+
+The PyPolona GUI version is made from the command-line version, and uses the same settings as the `ppolona` tool.
+
+> Remember: to **run the GUI on macOS for the first time**, _Ctrl+click_ the DMG, choose _Open_, then _Open_, then drag to Applications folder, there _Ctrl+click_ the app icon, choose _Open_, then _Open_.
+
+## What’s new
+
+Current version is **1.6.2**.
+
+#### 1.6.2
+
+- fix for failing to downloads JPG if other Polona resources exist for a page
+- minor GUI improvements
+
+#### 1.6.0
+
+- unless you specify `--no-text-pdf`, PyPolona now downloads an additional PDF that has searchable text if it’s available
+- `--skip` is now `--no-overwrite`
+- improved PDF metadata import, bugfixes
+
+#### 1.5.0
+
+- `-i` saves each downloaded document as subfolder with images, otherwise as one PDF (with metadata)
+- `--skip` instead of `--overwrite` flag
+
+#### 1.0.0
+
+- initial release
+
+## Install standalone PyPolona app
+
+### <a class="github-button btn btn-primary" href="https://github.com/twardoch/pypolona/raw/master/download/pypolona-mac.dmg" data-color-scheme="no-preference: dark; light: dark; dark: dark;" data-icon="octicon-download" data-size="large" aria-label="Download DMG for macOS">Download DMG for macOS</a>
+
+On **macOS**, **Ctrl+click** the downloaded DMG, choose **Open**, then **Open** again, then drag the icon to the `/Applications` folder.
+
+When you **run the app for the first time**, **Ctrl+click** the Polona.app, choose **Open**, then click **Open**. Later, you can just double-click the icon. If the app does not run, double-click again.
+
+### <a class="github-button btn btn-primary" href="https://github.com/twardoch/pypolona/raw/master/download/pypolona-win.zip" data-color-scheme="no-preference: dark; light: dark; dark: dark;" data-icon="octicon-download" data-size="large" aria-label="Download ZIP for Windows">Download ZIP for Windows</a>
+
+On **Windows**, unzip the downloaded ZIP, double-click the `setup_pypolona.exe` icon to install the app. You need 64-bit Windows.
+
+## Install pypolona Python package on macOS or Windows
+
+If you have Python 3.8+, you can install the Python version with `python3 -m pip install pypolona`.
+
+## Using the graphical PyPolona app (GUI)
+
+- If you installed the standalone app on macOS, **Ctrl**-click **`/Applications/PyPolona.app`** and choose **Open**, then choose **Open**. You can just double-click the next time to run it.
+- If you installed the standalone app on Windows, run **`PyPolona`** from your start menu.
+- If you installed the Python version, run `ppolona` or `python3 -m pypolona`
+
+### Search settings
+
+![Input tab](https://raw.githubusercontent.com/twardoch/pypolona/master/docs/img/pypolona_url.png)
+
+In the Input tab:
+
+In **query**, you can paste one or more URLs from Polona.pl (space-separated).
+
+![Search in input](https://raw.githubusercontent.com/twardoch/pypolona/master/docs/img/pypolona_search.png)
+
+In **Choose One** you can change what the **query** field means:
+
+- if nothing is selected, the query is interpreted as one or more URLs from Polona.pl
+- **search**: choose this and in the **query** field, enter a simple search query like `adam mickiewicz`; go to the **Options** tab to customize
+- **advanced**: you can use the advanced query syntax, see [documentation](https://polona.pl/api/entities/); go to the **Options** tab to customize
+- **ids**: Polona uses IDs for documents, you can just paste a list of space-separated IDs if you already know them
+
+In the **Options** tab:
+
+- In **Space-separated languages**, you can enter a space-separated list of languages like Polona uses them, e.g. `polski niemiecki angielski`. Use the sidebar on the [Polona](https://polona.pl) website to find them.
+
+- In **Sort search**, you can sort the results by score, date, title or creator, in ascending or descending order.
+
+- In **Output search results in format**, you can choose a format in which search results will be output. If you choose ids, you click **Restart** and then paste them back into the query field. Choose urls to get clickable links.
+
+- In **Save search results**, you can optionally save the search results into the file.
+
+### Download settings
+
+Turn on **Download found docs** to download the content of the queried result.
+
+- Turn on **Download JPEGs into subfolders** to download each document content as a series of JPEGs. In the download folder, one subfolder will be created per document. The subfolder name starts with the publication year, then part of the title, then the ID. If you are also downloading searchable PDFs, an additional PDF with the `_text` suffix will be saved in the subfolder. Also, a YAML file with some metadata will be saved in the subfolder.
+
+- Turn off **Download JPEGs into subfolders** to download each document content as one PDF. The app will not create subfolders. The PDF name starts with the publication year, then part of the title, then the ID. If you are also downloading searchable PDFs, an additional PDF with the `_text` suffix will be also saved.
+
+In the **Options** tab:
+
+![Options](https://raw.githubusercontent.com/twardoch/pypolona/master/docs/img/pypolona_options.png)
+
+- In **Save downloaded docs in this folder**, you can choose into which folder the app will download the documents. By default it uses the `polona` subfolder on your desktop.
+
+- In **Download max pages**, you can limit the maximum number of pages that the app downloads for each document. This is useful for test downloads, since some documents may have hundreds or pages.
+
+- For some documents, Polona has an extra lower-resolution searchable PDF. By default, that PDF is also downloaded, and saved with a `_text` suffix. Turn on **Skip downloading searchable PDFs** to not download these additional PDFs.
+
+- By default, the app will re-download and overwrite previously downloaded documents. Turn on **Skip existing subfolders/PDFs** to skip them.
+
+### Buttons
+
+![Result](https://raw.githubusercontent.com/twardoch/pypolona/master/docs/img/pypolona_result_urls.png)
+
+- Click **Start** to start the search or download.
+- Click **Cancel** to close the app.
+- If you’ve started and the search or download has finished, you can:
+  - click **Restart** to start the search or download with the same settings
+  - click **Edit** to go back to change the settings, so you can start another search or download.
+- If the download is running, you can click **Stop** to interrupt it.
+
+## Using the CLI
+
+_Note: the CLI is `ppolona`, not `pypolona`_
+
+- If you installed the standalone DMG on macOS, use the CLI via `/Applications/PyPolona.app/Contents/MacOS/ppolona -h`
+- If you installed the Python version, run `ppolona -h` or `python3 -m pypolona -h`
+- Command-line options:
+
+```
+usage: ppolona [-h] [-S | -A | -I] [-D] [-i] [-l [language [language ...]]] [-s {score desc,date desc,date asc,title asc,creator asc}]
+               [-f {ids,urls,yaml,json}] [-o results_file] [-d download_folder] [-M num_pages] [-T] [-O]
+               query [query ...]
+
+Search in and download from Polona.pl. GUI: Help › PyPolona 1.6.0 Help. CLI: ppolona -h
+
+optional arguments:
+  -h, --help            show this help message and exit
+
+Input:
+  query                 query is a Polona.pl URL unless you choose search, advanced or ids
+  -S, --search          Query is search query, see Options
+  -A, --advanced        Query is advanced search query, see Documentation
+  -I, --ids             Query is space-separated IDs
+  -D, --download        Download found docs, see Options
+  -i, --images          Download JPEGs into subfolders instead of PDF
+
+Options:
+  -l [language [language ...]], --lang [language [language ...]]
+                        Space-separated languages: polski angielski niemiecki...
+  -s {score desc,date desc,date asc,title asc,creator asc}, --sort {score desc,date desc,date asc,title asc,creator asc}
+                        Sort search results by score, date, title or creator (descending or ascending)
+  -f {ids,urls,yaml,json}, --format {ids,urls,yaml,json}
+                        Output search results in format
+  -o results_file, --output results_file
+                        Save search results to this file
+  -d download_folder, --download-dir download_folder
+                        Save downloaded docs in this folder
+  -M num_pages, --max-pages num_pages
+                        Download max pages per doc (0: all)
+  -T, --no-text-pdf     Skip downloading searchable PDFs
+  -O, --no-overwrite    Skip existing subfolders/PDFs
+```
+## More about Polona
+
+The [Polona](https://polona.pl/) is a bit overcomplicated to use, but fortunately, Polona publishes a [JSON API](https://polona.pl/api/entities/). The pypolona package uses that API.
+
+- [Polona](https://polona.pl/) — the main Polona website
+- [Polona/API](https://polona.pl/api/entities/) — the JSON API that pypolona uses
+- [Polona/blog](http://www.blog.polona.pl/) — the blog
+- [Polona/typo](http://typo.polona.pl/en/) — a cool minisite that lets you typeset a word and renders it with letters from random publications
+
+## Development
+
+- This project uses [Gooey](https://github.com/chriskiehl/Gooey). With Gooey, I could rapidly turn the Python command-line app which uses the `argparse` module into a simple GUI app. This project serves as a good example in how this can be done.
+- This project uses [PyInstaller](https://www.pyinstaller.org/) to build the standalone app.
+
+### Building on macOS
+
+To build the Python package, the Mac DMG and the Win EXE (via Wine):
+
+```
+./macdeploy prep && ./macdeploy build
+```
+
+### Building on Windows
+
+1. Install Python 3.8 from [Python.org](https://www.python.org/) (not the Windows Store!)
+2. Install [Inno Setup](https://jrsoftware.org/isinfo.php)
+
+```
+pip3 install --user --upgrade .[dev]
+python -m PyInstaller --distpath="app/build/dist-win" --workpath="app/build" -y "app/pyinstaller-win.spec"
+"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /dMyAppVersion="1.1.7" app/pypolona.iss /Q
+```
+
+## License and Copyright
+
+Copyright © 2020 Adam Twardoch. Licensed under the terms of the [MIT license](./LICENSE). This project is not affiliated with and not endorsed by Polona.
+
+<!-- Place this tag in your head or just before your close body tag. -->
+<script async defer src="https://buttons.github.io/buttons.js"></script>
+</file>
+
+</files>
