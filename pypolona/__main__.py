@@ -3,37 +3,44 @@
 ppolona
 -------
 Copyright (c) 2020 Adam Twardoch <adam+github@twardoch.com>
-MIT license. Python 3.9+
+MIT license. Python 3.8+
 
 Search in and download from Polona.pl
 Usage: 'ppolona' for GUI, 'ppolona -h' for CLI
 """
 
 import pathlib
-import argparse
-from ezgooey import ezgooey_decorator as ezgooey
-from ezgooey import logging as ezgooey_logging
 
 try:
-    from .polona import Polona
+    from .polona import *
 except ImportError:
-    from pypolona.polona import Polona  # type: ignore[no-redef]
-
+    from pypolona.polona import *
+try:
+    from . import *
+except ImportError:
+    from pypolona import *
 try:
     from .__init__ import __version__ as version
 except ImportError:
-    from pypolona import __version__ as version  # type: ignore[no-redef]
+    from pypolona.__init__ import __version__ as version
 
+from ezgooey.ez import *
 
-ezgooey_logging.init(level=ezgooey_logging.INFO)
-log = ezgooey_logging.logger("pypolona")
+# from cli2gui import Cli2Gui
 
-GUI_NAME = f"PyPolona {version}"
+logging.init(level=logging.INFO)
+log = logging.logger("pypolona")
+
+GUI_NAME = "PyPolona %s" % (version)
 CLI_NAME = "ppolona"
-DESCRIPTION = f"Search in and download from Polona.pl. GUI: Help > {GUI_NAME} Help. CLI: {CLI_NAME} -h"
+DESCRIPTION = (
+    "Search in and download from Polona.pl. GUI: Help › {} Help. CLI: {} -h".format(
+        GUI_NAME, CLI_NAME
+    )
+)
 
 
-@ezgooey( # type: ignore
+@ezgooey(
     advanced=True,
     auto_start=False,
     default_size=(800, 600),
@@ -70,7 +77,7 @@ DESCRIPTION = f"Search in and download from Polona.pl. GUI: Help > {GUI_NAME} He
                 },
                 {
                     "type": "Link",
-                    "menuTitle": f"{GUI_NAME} Documentation",
+                    "menuTitle": "%s Documentation" % (GUI_NAME),
                     "url": "https://twardoch.github.io/pypolona/",
                 },
             ],
@@ -81,8 +88,15 @@ def gui():
     return cli()
 
 
+# @Cli2Gui(auto_enable=True, parser="argparse", gui="pysimpleguiweb",
+#          theme=None, darkTheme=None, sizes=None, image=None, program_name=None,
+#          program_description=None, max_args_shown=5)
+# def webgui():
+#     return cli()
+
+
 def cli():
-    parser = argparse.ArgumentParser(prog="ppolona", description=DESCRIPTION)
+    parser = ArgumentParser(prog="ppolona", description=DESCRIPTION)
 
     query_help = "query is a Polona.pl URL unless you choose search, advanced or ids"
 
@@ -254,17 +268,22 @@ def cli():
         },
     )
 
-    parser_q.add_argument("-V", "--version", action="version", version=f"%(prog)s {version}")
+    parser_q.add_argument("-V", "--version", action="version", version="%s" % (version))
 
     return parser
 
 
 def main(*args, **kwargs):
-    parser = gui(*args, **kwargs)
+    #    if '--web' in sys.argv:
+    #        sys.argv.pop(sys.argv.index('--web'))
+    #        parser = webgui(*args, **kwargs)
+    #    else:
+    if True:
+        parser = gui(*args, **kwargs)
     opts = parser.parse_args()
     if opts:
-        opts_dict = vars(opts)
-        Polona(**opts_dict)
+        opts = vars(opts)
+        Polona(**opts)
 
 
 if __name__ == "__main__":

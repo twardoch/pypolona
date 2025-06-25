@@ -1,0 +1,1 @@
+['/Users/adam/Library/Python/3.10/bin/ppolona']

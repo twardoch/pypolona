@@ -1,6 +1,9 @@
 .idea/
+wine/
 
+.idea/
 *.code-workspace
+.dccache
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

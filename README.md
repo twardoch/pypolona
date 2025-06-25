@@ -182,6 +182,33 @@ To build the Python package, the Mac DMG and the Win EXE (via Wine):
 ./macdeploy prep && ./macdeploy build
 ```
 
+#### Problems
+
+If you run into problems with building on Big Sur, uninstall pyobjc:
+
+```
+python3 -m pip freeze | grep pyobjc | while read p; do python3 -m pip uninstall -y "$p"; done;
+```
+
+and install the development branch
+
+```
+git clone --branch master --single-branch --depth 1 https://github.com/ronaldoussoren/pyobjc && python3 pyobjc/install.py
+```
+
+If you get 
+
+```
+File "/usr/local/Cellar/python@3.9/3.9.4/Frameworks/Python.framework/Versions/3.9/lib/python3.9/re.py", line 145, in <module>
+    class RegexFlag(enum.IntFlag):
+AttributeError: module 'enum' has no attribute 'IntFlag'
+```
+do 
+
+```
+pip3 uninstall -y enum34
+```
+
 ### Building on Windows
 
 1. Install Python 3.8 from [Python.org](https://www.python.org/) (not the Windows Store!)
