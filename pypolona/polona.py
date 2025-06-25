@@ -42,116 +42,115 @@ log = ezgooey_logging.logger("pypolona")
 class Polona:
     def __init__(self, **opts: Any):
         log.debug(opts)
-        self.o = ad(opts)
+        self.options = ad(opts)
         self.ids: list[str] = []
         self.hits: ad | None = None
         self.dldir: str | None = None
 
-        if self.o.ids:
-            self.ids = self.o.query
-        elif self.o.search or self.o.advanced:
+        if self.options.ids:
+            self.ids = self.options.query
+        elif self.options.search or self.options.advanced:
             self.search()
-            if self.o.download:
-                if self.o.output:
+            if self.options.download:
+                if self.options.output:
                     self.save_search_results()
             else:
                 self.save_search_results()
         else:
-            self.parse_urls(self.o.query)
+            self.parse_urls(self.options.query)
 
-        if self.o.download:
+        if self.options.download:
             self.download()
-            log.success(f"Finished downloading into file://{self.o.download_dir}")
+            log.success(f"Finished downloading into file://{self.options.download_dir}")
 
     def parse_urls(self, urls: list[str]):
         RE_URL = r"^https://polona\.pl/item/.*?,([A-Za-z0-9]+)/.*"
-        for url in urls:
-            mo = re.search(RE_URL, url, re.M)
-            if mo:
-                self.ids.append(mo.group(1))
+        for url_string in urls:
+            match_object = re.search(RE_URL, url_string, re.M)
+            if match_object:
+                self.ids.append(match_object.group(1))
 
-    def _requests_encode_dict(self, dic: dict, name: str) -> str:
-        url_str = ""  # Renamed url to url_str
-        for k, v in dic.items():
-            fragm = f"{name}[{k}]"
+    def _requests_encode_dict(self, data_dict: dict, name: str) -> str:
+        encoded_params = ""
+        for k, v in data_dict.items():
+            param_fragment = f"{name}[{k}]"
             if isinstance(v, list):  # Use isinstance for type checking
                 for i in v:
-                    url_str += f"&{fragm}[]={i}"
+                    encoded_params += f"&{param_fragment}[]={i}"
             else:
-                url_str += f"&{fragm}={v}"
-        return url_str
+                encoded_params += f"&{param_fragment}={v}"
+        return encoded_params
 
     def search(self):
         filters: dict[str, Any] = {"public": 1}  # Type hint for filters
-        if self.o.search_languages:
-            filters["language"] = self.o.search_languages
+        if self.options.search_languages:
+            filters["language"] = self.options.search_languages
         params: dict[str, Any] = {  # Type hint for params
-            "query": " ".join(self.o.query),
-            "sort": self.o.sort,
+            "query": " ".join(self.options.query),
+            "sort": self.options.sort,
             "size": 150,
         }
-        if self.o.advanced:
+        if self.options.advanced:
             params["advanced"] = 1
-        base_url = "https://polona.pl/api/entities/"  # Renamed url to base_url
+        base_url = "https://polona.pl/api/entities/"
         urlparams = urllib.parse.urlencode(params) + self._requests_encode_dict(
             filters, "filters"
         )
         log.debug(f"{base_url}?{urlparams}")
-        r = requests.get(f"{base_url}?{urlparams}")
-        jhits = None
+        response = requests.get(f"{base_url}?{urlparams}")
+        json_hits_data = None
         try:
-            jhits = ad(r.json())
-        except Exception as e:  # Catch specific exception
+            json_hits_data = ad(response.json())
+        except requests.exceptions.JSONDecodeError as e:
             h = html2text.HTML2Text()  # type: ignore[no-untyped-call]
-            log.critical(f"Error parsing JSON response: {e}\n{h.handle(r.text)}")  # type: ignore[no-untyped-call]
+            log.critical(f"Error parsing JSON response: {e}\n{h.handle(response.text)}")  # type: ignore[no-untyped-call]
         self.ids = []
-        if jhits:
+        if json_hits_data:
             self.hits = ad()
-            # Renamed jhit to jhit_data to avoid PLW2901/clearer assignment
-            for jhit_data in jhits.get("hits", ad()):
-                current_jhit = ad(jhit_data)  # Processed jhit data
-                if current_jhit.id:
-                    self.ids.append(current_jhit.id)
+            for jhit_data in json_hits_data.get("hits", ad()):
+                processed_json_hit = ad(jhit_data)
+                if processed_json_hit.id:
+                    self.ids.append(processed_json_hit.id)
                     hit = ad()
-                    hit.id = current_jhit.id
-                    hit.title = current_jhit.title
-                    hit.slug = current_jhit.slug
-                    if year := current_jhit.date:
+                    hit.id = processed_json_hit.id
+                    hit.title = processed_json_hit.title
+                    hit.slug = processed_json_hit.slug
+                    if year := processed_json_hit.date:
                         hit.year = dateutil.parser.parse(year).year
                     hit.url = f"https://polona.pl/item/{hit.slug},{hit.id}/"
-                    self.hits[current_jhit.id] = hit
+                    self.hits[processed_json_hit.id] = hit
 
     def save_search_results(self):
-        output_str: str  # Type hint for output_str
-        if self.o.format == "yaml":
+        output_str: str
+        if self.options.format == "yaml":
             output_str = oyaml.yaml_dump(self.hits)  # type: ignore[no-untyped-call]
-        elif self.o.format == "json":
+        elif self.options.format == "json":
             output_str = json.dumps(self.hits)
-        elif self.o.format == "urls":
+        elif self.options.format == "urls":
             output_str = "\n".join([hit.url for hit in self.hits.values()])
         else:
             output_str = " ".join(self.hits.keys())
 
-        if self.o.output:
+        if self.options.output:
             with open(
-                self.o.output, "w", encoding="utf-8"
-            ) as outfile:  # Ensure encoding and use with
+                self.options.output, "w", encoding="utf-8"
+            ) as outfile:
                 outfile.write(output_str)
         else:
-            sys.stdout.write(output_str)  # Use sys.stdout.write for consistency
-            sys.stdout.write("\n")  # Add newline if printing to stdout
+            sys.stdout.write(output_str)
+            sys.stdout.write("\n")
 
-        if self.o.output:
-            log.success(f"Search results saved in: file://{self.o.output}")
+        if self.options.output:
+            log.success(f"Search results saved in: file://{self.options.output}")
 
     def can_download(self) -> bool:
         can_dl = False
-        if self.ids and self.o.download:  # Check if self.ids is not empty
-            self.dldir = os.path.abspath(self.o.download_dir)
+        if self.ids and self.options.download:
+            self.dldir = os.path.abspath(self.options.download_dir)
             if not os.path.isdir(self.dldir):
                 try:
                     os.makedirs(self.dldir)
-                except Exception as e:  # Catch specific exception
+                except OSError as e:
                     log.critical(f"Cannot create dir file://{self.dldir}: {e}")
             if os.path.isdir(self.dldir):
                 can_dl = True
@@ -166,25 +165,23 @@ class Polona:
             hit.subdir_parts.append(f"{parsed_year}-")
         hit.subdir_parts.append(hit.slug[:64])
         hit.subdir_parts.append(f"-{hit.id}")
-        hit.subdir = "".join(hit.subdir_parts)  # Join parts
+        hit.subdir = "".join(hit.subdir_parts)
         hit.url = f"https://polona.pl/item/{hit.slug},{hit.id}/"
         return hit
 
-    def _process_textpdf(self, hit: ad) -> ad:  # Added type hint
+    def _process_textpdf(self, hit: ad) -> ad:
         return hit
 
-    def _process_dc(self, hit: ad) -> ad:  # Added type hint
-        r = requests.get(hit.dc_url, stream=True)
-        content_type = r.headers.get("content-type", "")
+    def _process_dc(self, hit: ad) -> ad:
+        response = requests.get(hit.dc_url, stream=True)
+        content_type = response.headers.get("content-type", "")
         if ".xml" in mimetypes.guess_all_extensions(content_type.split(";")[0]):
             try:
-                # Ensure r.content is bytes for etree.XML
-                xml_content = r.content
+                xml_content = response.content
                 if isinstance(xml_content, str):
                     xml_content = xml_content.encode("utf-8")
 
                 dc_root_xml = etree.XML(xml_content)
-                # Check if dc_root_xml has children before accessing dc_root_xml[0]
                 if len(dc_root_xml):  # type: ignore[arg-type]
                     dc_data_converted = lxml2json.convert(  # type: ignore[no-untyped-call]
                         dc_root_xml[0],  # type: ignore[index]
@@ -198,17 +195,17 @@ class Polona:
                             ".//tags",
                         ],
                     )
-                    if dc := dc_data_converted.get(  # type: ignore[union-attr]
+                    if dc_metadata := dc_data_converted.get(  # type: ignore[union-attr]
                         "{http://www.w3.org/1999/02/22-rdf-syntax-ns#}Description",
                         {},
                     ):
-                        hit.dc = dc
+                        hit.dc = dc_metadata
             except etree.XMLSyntaxError as e:
                 log.error(f"Failed to parse DC XML for {hit.id}: {e}")
         return hit
 
-    def _process_resources(self, hit: ad) -> ad:  # Added type hint
-        if not hit.resources:  # Guard against missing resources
+    def _process_resources(self, hit: ad) -> ad:
+        if not hit.resources:
             log.warning(f"Hit {getattr(hit, 'id', '<unknown>')} has no resources. This may indicate upstream data issues.")
             return hit
         for resource in hit.resources:
@@ -218,223 +215,270 @@ class Polona:
             if ".xml" in mimetypes.guess_all_extensions(mime_type):
                 hit.dc_url = resource.get("url", None)
                 if hit.dc_url:
-                    hit = self._process_dc(hit)  # Assign back
+                    hit = self._process_dc(hit)
         return hit
 
     def download_id(self, item_id: str, progress: str = "") -> bool:
         success = False
-        api_url = (
-            f"https://polona.pl/api/entities/{item_id}"  # Use f-string, rename var
-        )
+        api_url = f"https://polona.pl/api/entities/{item_id}"
         log.debug(api_url)
-        r = requests.get(api_url)
-        hit_data: ad | None = None  # Type hint, rename var
+        response = requests.get(api_url)
+        item_json_data: ad | None = None
         try:
-            hit_data = ad(r.json())
-        except Exception as e:  # Catch specific exception
+            item_json_data = ad(response.json())
+        except requests.exceptions.JSONDecodeError as e:
             h = html2text.HTML2Text()  # type: ignore[no-untyped-call]
-            log.critical(f"Failed to parse JSON for {item_id}: {e}\n{h.handle(r.text)}")  # type: ignore[no-untyped-call]
-            return False  # Early exit if JSON parsing fails
+            log.critical(f"Failed to parse JSON for {item_id}: {e}\n{h.handle(response.text)}")  # type: ignore[no-untyped-call]
+            return False
 
-        if hit_data and hasattr(hit_data, "id") and hit_data.id:  # Check structure
-            current_hit = self._process_hit(
-                hit_data
-            )  # Use current_hit for processed data
-            current_hit.textpdf_url = None  # Initialize these attributes
-            current_hit.dc_url = None
-            if hasattr(current_hit, "resources") and current_hit.resources:
-                current_hit = self._process_resources(current_hit)
+        if item_json_data and hasattr(item_json_data, "id") and item_json_data.id:
+            processed_item_data = self._process_hit(item_json_data)
+            processed_item_data.textpdf_url = None
+            processed_item_data.dc_url = None
+            if hasattr(processed_item_data, "resources") and processed_item_data.resources:
+                processed_item_data = self._process_resources(processed_item_data)
 
             if (
-                hasattr(current_hit, "scans")
-                and current_hit.scans
-                and len(current_hit.scans) > 0
+                hasattr(processed_item_data, "scans")
+                and processed_item_data.scans
+                and len(processed_item_data.scans) > 0
             ):
-                success = self.save_downloaded(current_hit, progress)
-        elif hit_data:
+                success = self.save_downloaded(processed_item_data, progress)
+        elif item_json_data:
             log.warn(
-                f"Hit data for {item_id} does not have an 'id' or is empty: {hit_data}"
+                f"Hit data for {item_id} does not have an 'id' or is empty: {item_json_data}"
             )
         return success
 
-    def save_downloaded(self, hit: ad, progress: str) -> bool:
-        if self.dldir is None:  # Guard against unset download directory
-            log.error("Download directory (self.dldir) is not set.")
-            return False
-
-        success = True  # Assume success initially
-        out_path_base = os.path.join(self.dldir, hit.subdir)  # Base path for item
+    def _prepare_download_paths(self, hit: ad) -> tuple[str, str | None, str, str]:
+        out_path_base = os.path.join(self.dldir, hit.subdir)
         textpdf_path = None
+        yaml_path: str
+        out_path_final: str
+        desttext: str
 
-        if self.o.images:
+        if self.options.images:
             desttext = "folder"
-            # Ensure directory exists for images and YAML
-            os.makedirs(out_path_base, exist_ok=True)
+            os.makedirs(out_path_base, exist_ok=True) # Ensure dir exists for images and YAML
             yaml_path = os.path.join(out_path_base, f"{hit.id}.yaml")
             if hit.textpdf_url:
                 textpdf_path = os.path.join(out_path_base, f"{hit.id}_text.pdf")
-            # For images, out_path_final is the directory itself
-            out_path_final = out_path_base
+            out_path_final = out_path_base # For images, out_path_final is the directory
         else:
             desttext = "PDF"
-            # For PDF, out_path_base is the filename without extension yet
-            yaml_path = f"{out_path_base}.yaml"
+            yaml_path = f"{out_path_base}.yaml" # For PDF, out_path_base is filename without ext
             if hit.textpdf_url:
                 textpdf_path = f"{out_path_base}_text.pdf"
             out_path_final = f"{out_path_base}.pdf"
+        return yaml_path, textpdf_path, out_path_final, desttext
 
-        should_overwrite = True
-        num_scans_available = len(hit.scans) if hasattr(hit.scans, "__len__") else 0
-
-        pages_to_download_count = num_scans_available
-        if self.o.max_pages > 0:
-            pages_to_download_count = min(num_scans_available, self.o.max_pages)
-
-        log.info(
-            f"{progress}: Downloading {pages_to_download_count}/{num_scans_available} pages into {hit.subdir[:40]}..."
+    def _download_item_images(
+        self,
+        hit: ad,
+        pages_to_download_count: int,
+        progress_string: str,
+        # out_path_final is the directory path if saving JPEGs, otherwise unused by this func
+        out_path_for_jpegs: str
+    ) -> tuple[list[bytes] | None, bool]:
+        """
+        Downloads images for the given hit.
+        If options.images is True, saves JPEGs to out_path_for_jpegs and returns (None, success_status).
+        If options.images is False, returns (list_of_image_bytes, success_status).
+        """
+        memimages: list[bytes] = []
+        images_download_success = True # Assume success until a download fails
+        scans_to_process = (
+            hit.scans[:pages_to_download_count]
+            if hasattr(hit.scans, "__getitem__")
+            else []
         )
 
-        if os.path.exists(out_path_final):
-            if self.o.skip:
-                should_overwrite = False
-                log.info(f"Skipping {desttext} {out_path_final}")
-            else:
-                log.warn(f"Overwriting {desttext} {out_path_final}")
+        for page_idx, scan_data in enumerate(scans_to_process):
+            page_progress_string = (
+                f"[page {page_idx + 1:03d}/{pages_to_download_count:03d}]"
+            )
+            current_jpeg_filename = ""
+            if self.options.images:
+                current_jpeg_filename = f"{hit.id}-{page_idx + 1:04d}.jpg"
 
-        # Save YAML metadata for images (always, if images mode, even if skipping image download)
-        if self.o.images:
+            log.info(f"{progress_string} {page_progress_string}: downloading")
+
+            jpeg_resource_url = None
+            for res_data in scan_data.get("resources", []):
+                if res_data.get("mime") == "image/jpeg":
+                    jpeg_resource_url = res_data.get("url")
+                    break
+
+            if jpeg_resource_url:
+                img_bytes = self.download_scan(jpeg_resource_url)
+                if img_bytes:
+                    if self.options.images:
+                        jpeg_full_path = os.path.join(
+                            out_path_for_jpegs, current_jpeg_filename
+                        )
+                        try:
+                            with open(jpeg_full_path, "wb") as jpeg_file:
+                                jpeg_file.write(img_bytes)
+                        except OSError as e:
+                            log.error(
+                                f"Failed to write JPEG {jpeg_full_path}: {e}"
+                            )
+                            images_download_success = False
+                    else: # PDF mode
+                        memimages.append(img_bytes)
+                else: # img_bytes is None
+                    log.error(f"Cannot download image from {jpeg_resource_url}")
+                    images_download_success = False
+            else: # No jpeg resource found for this scan_data
+                log.warn(f"{progress_string} {page_progress_string}: No JPEG resource URL found for scan.")
+                # Consider if this should mark images_download_success as False
+                # For now, if one page is missing, we still try others.
+
+        if self.options.images:
+            return None, images_download_success # JPEGs saved directly, return None for image data
+        else:
+            return memimages, images_download_success # Return image data for PDF creation
+
+    def _create_pdf_from_images(self, hit:ad, image_bytes_list: list[bytes], pdf_output_path: str) -> bool:
+        log.info(f"Saving PDF to {pdf_output_path}")
+        if not image_bytes_list:
+             log.error(f"No images provided to create PDF: {pdf_output_path}")
+             return False
+        pdf_save_ok = self.pdf_save(pdf_output_path, image_bytes_list)
+        if pdf_save_ok:
+            meta_add_ok = self.pdf_add_meta(pdf_output_path, hit)
+            if meta_add_ok:
+                log.info(f"Saved high-res image PDF to file://{pdf_output_path}")
+            return meta_add_ok
+        return False
+
+    def _download_and_save_text_pdf(self, hit: ad, text_pdf_path: str | None) -> bool:
+        if not text_pdf_path or not hit.textpdf_url or self.options.textpdf_skip :
+            return True # Nothing to do or explicitly skipping
+
+        if os.path.exists(text_pdf_path) and self.options.skip:
+            log.info(f"Skipping existing text PDF {text_pdf_path}")
+            return True
+
+        log.info(f"Downloading searchable text PDF to {text_pdf_path}")
+        text_pdf_content_retrieved = self.download_save_textpdf( # This function now correctly returns bool
+            hit.textpdf_url, text_pdf_path
+        )
+        if text_pdf_content_retrieved:
+            # Assuming download_save_textpdf saved the file if it returned True
+            meta_add_ok = self.pdf_add_meta(text_pdf_path, hit)
+            if meta_add_ok:
+                log.info(f"Saved and added metadata to searchable text PDF: file://{text_pdf_path}")
+            return meta_add_ok
+        else:
+            log.error(f"Failed to download or save text PDF from {hit.textpdf_url}")
+            return False
+
+    def save_downloaded(self, hit: ad, progress_string: str) -> bool:
+        if self.dldir is None:
+            log.error("Download directory (self.dldir) is not set.")
+            return False
+
+        overall_success = True
+        yaml_path, textpdf_path, out_path_final, desttext = self._prepare_download_paths(hit)
+
+        num_scans_available = len(hit.scans) if hasattr(hit.scans, "__len__") else 0
+        pages_to_download_count = num_scans_available
+        if self.options.max_pages > 0:
+            pages_to_download_count = min(num_scans_available, self.options.max_pages)
+
+        log.info(
+            f"{progress_string}: Downloading {pages_to_download_count}/{num_scans_available} pages for {hit.id} into {desttext} '{hit.subdir[:40]}...'"
+        )
+
+        should_process_main_content = True # Determines if we download JPEGs/create main PDF
+        if os.path.exists(out_path_final):
+            if self.options.skip:
+                should_process_main_content = False
+                log.info(f"Skipping existing {desttext}: file://{out_path_final}")
+            else:
+                log.warn(f"Overwriting existing {desttext}: file://{out_path_final}")
+
+        # Save YAML metadata (always in images mode, even if skipping image download;
+        # for PDF mode, it's saved alongside the PDF if main content is processed)
+        if self.options.images: # In image mode, out_path_final is the directory
             try:
                 with open(yaml_path, "w", encoding="utf-8") as yamlfile:
-                    oyaml.dump(hit, yamlfile)  # type: ignore[no-untyped-call]
+                    oyaml.dump(hit, yamlfile)
             except OSError as e:
                 log.error(f"Failed to write YAML file {yaml_path}: {e}")
-                success = False  # Consider this a failure
+                overall_success = False # Critical failure if YAML can't be written in image mode
 
-        if (
-            should_overwrite and success
-        ):  # Proceed only if not skipping and YAML write (if any) was okay
-            memimages: list[bytes] = []
-            scans_to_process = (
-                hit.scans[:pages_to_download_count]
-                if hasattr(hit.scans, "__getitem__")
-                else []
+        if should_process_main_content and overall_success:
+            # out_path_final is the directory for JPEGs if self.options.images is True
+            image_data_list, images_download_success = self._download_item_images(
+                hit, pages_to_download_count, progress_string, out_path_final
             )
+            overall_success = overall_success and images_download_success
 
-            for page_idx, scan_data in enumerate(scans_to_process):
-                progress_page = (
-                    f"[page {page_idx + 1:03d}/{pages_to_download_count:03d}]"
-                )
-                jpeg_filename = ""
-                if self.o.images:
-                    jpeg_filename = f"{hit.id}-{page_idx + 1:04d}.jpg"
+            if not self.options.images and overall_success: # PDF mode
+                if image_data_list:
+                    # For PDF mode, save YAML here, only if PDF creation is attempted
+                    try:
+                        with open(yaml_path, "w", encoding="utf-8") as yamlfile:
+                           oyaml.dump(hit, yamlfile)
+                    except OSError as e:
+                        log.error(f"Failed to write YAML file {yaml_path}: {e}")
+                        overall_success = False # YAML fail is part of PDF process fail
 
-                log.info(f"{progress} {progress_page}: downloading")
+                    if overall_success: # Proceed only if YAML was saved
+                        pdf_creation_success = self._create_pdf_from_images(hit, image_data_list, out_path_final)
+                        overall_success = overall_success and pdf_creation_success
+                elif pages_to_download_count > 0 :
+                    log.error(f"No images were downloaded for PDF: {out_path_final}")
+                    overall_success = False
+            elif self.options.images and not images_download_success and pages_to_download_count > 0:
+                 log.error(f"Failed to download one or more images for item {hit.id} into {out_path_final}")
+                 # overall_success is already False due to images_download_success
 
-                for res_data in scan_data.get("resources", []):
-                    if res_data.get("mime") == "image/jpeg":
-                        scan_url_str = res_data.get("url")
-                        if scan_url_str:
-                            img_bytes = self.download_scan(scan_url_str)
-                            if img_bytes:
-                                if self.o.images:
-                                    # out_path_final is the directory for images mode
-                                    jpeg_full_path = os.path.join(
-                                        out_path_final, jpeg_filename
-                                    )
-                                    try:
-                                        with open(jpeg_full_path, "wb") as jpeg_file:
-                                            jpeg_file.write(img_bytes)
-                                    except OSError as e:
-                                        log.error(
-                                            f"Failed to write JPEG {jpeg_full_path}: {e}"
-                                        )
-                                        success = False  # Mark as failure
-                                else:
-                                    memimages.append(img_bytes)
-                            else:
-                                log.error(f"Cannot download {scan_url_str}")
-                                success = False  # Mark as failure for this page
-                        break  # Found jpeg, process next scan_data
+        # Attempt to download text PDF regardless of main content processing, unless skipped
+        text_pdf_processing_success = self._download_and_save_text_pdf(hit, textpdf_path)
+        overall_success = overall_success and text_pdf_processing_success
 
-            if not self.o.images and memimages:  # If PDF mode and images were collected
-                log.info(f"Saving {out_path_final}")
-                pdf_save_ok = self.pdf_save(out_path_final, memimages)
-                if pdf_save_ok:
-                    meta_add_ok = self.pdf_add_meta(out_path_final, hit)
-                    if meta_add_ok:
-                        log.info(f"Saved high-res image PDF to file://{out_path_final}")
-                    success = success and meta_add_ok
-                else:
-                    success = False
-            elif not self.o.images and not memimages and pages_to_download_count > 0:
-                # PDF mode, but no images downloaded (e.g. all downloads failed or no JPEG resources)
-                log.error(f"No images downloaded for PDF: {out_path_final}")
-                success = False
-
-        # Process text PDF regardless of main content overwrite status, if path exists and not skipping text PDFs
-        # However, its success should contribute to the overall success if it was attempted.
-        if textpdf_path and not self.o.textpdf_skip:
-            attempt_text_pdf_download = True
-            if os.path.exists(textpdf_path) and self.o.skip:
-                log.info(f"Skipping existing text PDF {textpdf_path}")
-                attempt_text_pdf_download = (
-                    False  # Don't try to download or add meta if skipping existing
-                )
-
-            if attempt_text_pdf_download:
-                text_pdf_dl_ok = self.download_save_textpdf(
-                    hit.textpdf_url, textpdf_path
-                )
-                if text_pdf_dl_ok:
-                    text_pdf_meta_ok = self.pdf_add_meta(textpdf_path, hit)
-                    if text_pdf_meta_ok:
-                        log.info(f"Saved searchable text PDF to file://{textpdf_path}")
-                    success = (
-                        success and text_pdf_meta_ok
-                    )  # Overall success depends on this too
-                else:
-                    success = False  # Failed to download/save text PDF
-
-        return success
+        return overall_success
 
     def pdf_add_meta(self, pdf_path: str, hit: ad) -> bool:
         try:
             pdf = pikepdf.open(pdf_path, allow_overwriting_input=True)  # type: ignore[no-untyped-call]
             with pdf.open_metadata(set_pikepdf_as_editor=False) as meta:  # type: ignore[no-untyped-call]
                 meta["xmp:CreatorTool"] = (
-                    f"PyPolona {__version__}"  # Use imported __version__
+                    f"PyPolona {__version__}"
                 )
 
-                id_val = hit.get("id")  # Renamed id to id_val
-                meta_ids: list[Any] = []  # Renamed ids to meta_ids, allow Any initially
-                if id_val:
-                    meta_ids.append(id_val)
-                    meta["dc:identifier"] = str(id_val)  # Ensure string
+                item_id_value = hit.get("id")
+                metadata_ids_list: list[Any] = []
+                if item_id_value:
+                    metadata_ids_list.append(item_id_value)
+                    meta["dc:identifier"] = str(item_id_value)
 
-                dc = hit.get("dc", ad())  # Default to empty AttrDict
+                dc_metadata = hit.get("dc", ad())
 
                 if hit.get("isbn"):
                     meta["prism2:isbn"] = str(hit["isbn"])
-                    meta_ids.append(hit["isbn"])
+                    metadata_ids_list.append(hit["isbn"])
                 if hit.get("issn"):
-                    meta["prism2:issn"] = str(hit["issn"])  # Corrected from hit['isbn']
-                    meta_ids.append(hit["issn"])
+                    meta["prism2:issn"] = str(hit["issn"])
+                    metadata_ids_list.append(hit["issn"])
                 if hit.get("academica_id"):
-                    meta_ids.append(hit["academica_id"])
+                    metadata_ids_list.append(hit["academica_id"])
                 if hit.get("oclc_no"):
-                    meta_ids.append(hit["oclc_no"])
+                    metadata_ids_list.append(hit["oclc_no"])
 
-                meta_ids.extend(hit.get("call_no", []))
-                if meta_ids:
-                    # pikepdf expects list of strings for xmp:Identifier
-                    meta["xmp:Identifier"] = [str(i) for i in set(meta_ids)]
+                metadata_ids_list.extend(hit.get("call_no", []))
+                if metadata_ids_list:
+                    meta["xmp:Identifier"] = [str(i) for i in set(metadata_ids_list)]
 
                 if hit.get("title"):
                     meta["dc:title"] = str(hit["title"])
                 if hit.get("date"):
                     meta["dc:date"] = [
                         str(hit["date"])
-                    ]  # Ensure it's a list of strings
+                    ]
                 if hit.get("date_descriptive"):
                     meta["prism2:timePeriod"] = [str(hit["date_descriptive"])]
                 if hit.get("url"):
@@ -445,112 +489,112 @@ class Polona:
                 contributors = hit.get("contributor", [])
                 if isinstance(contributors, list) and contributors:
                     meta["dc:contributor"] = [str(c) for c in set(contributors)]
-                    if not author:  # Check if author still empty
+                    if not author:
                         author = str(contributors[0])
 
                 meta["dc:creator"] = [author.replace(",", " ").replace("  ", " ")]
-                # meta["dc:source"] is already set if hit.url exists
 
-                dc_langs_list = dc.get("language", [])
-                if isinstance(dc_langs_list, list) and dc_langs_list:
-                    valid_langs = [
+                dc_languages_list = dc_metadata.get("language", [])
+                if isinstance(dc_languages_list, list) and dc_languages_list:
+                    valid_languages = [
                         str(s["text"]).strip()
-                        for s in dc_langs_list
+                        for s in dc_languages_list
                         if isinstance(s, dict) and "text" in s
                     ]
-                    if valid_langs:
-                        meta["dc:language"] = list(set(valid_langs))
+                    if valid_languages:
+                        meta["dc:language"] = list(set(valid_languages))
 
-                rights_list_val = hit.get("rights", [])
-                if isinstance(rights_list_val, list) and rights_list_val:
-                    rights_str_val = ";".join(
-                        str(r) for r in rights_list_val
-                    )  # Ensure strings
-                    meta["dc:rights"] = rights_str_val
-                    meta["xmpRights:WebStatement"] = rights_str_val
+                rights_list = hit.get("rights", [])
+                if isinstance(rights_list, list) and rights_list:
+                    rights_string = ";".join(
+                        str(r) for r in rights_list
+                    )
+                    meta["dc:rights"] = rights_string
+                    meta["xmpRights:WebStatement"] = rights_string
 
-                categories_list = hit.get("categories", [])
+                item_categories_list = hit.get("categories", [])
                 if (
-                    isinstance(categories_list, list) and categories_list
-                ):  # Check if list and not empty
-                    str_categories = [str(c) for c in categories_list]
-                    meta["dc:type"] = list(set(str_categories))
-                    meta["prism2:contentType"] = "; ".join(str_categories)
+                    isinstance(item_categories_list, list) and item_categories_list
+                ):
+                    string_categories = [str(c) for c in item_categories_list]
+                    meta["dc:type"] = list(set(string_categories))
+                    meta["prism2:contentType"] = "; ".join(string_categories)
 
-                keywords_agg: list[Any] = []  # Renamed keywords to keywords_agg
-                keywords_agg.extend(hit.get("subject", []))
-                keywords_agg.extend(hit.get("keywords", []))
-                # categories already added to dc:type, avoid duplicate in keywords if not intended
-                # keywords_agg.extend(hit.get("categories", []))
-                keywords_agg.extend(hit.get("metatypes", []))
-                keywords_agg.extend(hit.get("projects", []))
+                aggregated_keywords_list: list[Any] = []
+                aggregated_keywords_list.extend(hit.get("subject", []))
+                aggregated_keywords_list.extend(hit.get("keywords", []))
+                aggregated_keywords_list.extend(hit.get("metatypes", []))
+                aggregated_keywords_list.extend(hit.get("projects", []))
 
-                dc_tags_list = dc.get("tags", [])
-                if isinstance(dc_tags_list, list) and dc_tags_list:
-                    keywords_agg.extend(
+                dc_tags_list_from_metadata = dc_metadata.get("tags", [])
+                if isinstance(dc_tags_list_from_metadata, list) and dc_tags_list_from_metadata:
+                    aggregated_keywords_list.extend(
                         s["text"]
-                        for s in dc_tags_list
+                        for s in dc_tags_list_from_metadata
                         if isinstance(s, dict) and "text" in s
                     )
 
-                if keywords_agg:
-                    # Ensure all keywords are strings and then get unique sorted list
-                    unique_keywords_str = sorted(
-                        list(set(str(k) for k in keywords_agg))
+                if aggregated_keywords_list:
+                    unique_keywords_string_list = sorted(
+                        list(set(str(k) for k in aggregated_keywords_list))
                     )
-                    meta["dc:subject"] = unique_keywords_str
-                    meta["pdf:Keywords"] = "; ".join(unique_keywords_str)
+                    meta["dc:subject"] = unique_keywords_string_list
+                    meta["pdf:Keywords"] = "; ".join(unique_keywords_string_list)
 
-                publisher_list: list[str] = []  # Renamed publisher to publisher_list
+                item_publishers_list: list[str] = []
                 if hit.get("publisher"):
-                    publisher_list.append(str(hit["publisher"]))
+                    item_publishers_list.append(str(hit["publisher"]))
                 if hit.get("imprint"):
-                    publisher_list.append(str(hit["imprint"]))
-                if publisher_list:
-                    meta["dc:publisher"] = list(set(publisher_list))
+                    item_publishers_list.append(str(hit["imprint"]))
+                if item_publishers_list:
+                    meta["dc:publisher"] = list(set(item_publishers_list))
 
-                location_parts_list: list[str] = []  # Renamed location_parts
-                location_parts_list.extend(str(p) for p in hit.get("publish_place", []))
-                location_parts_list.extend(str(c) for c in hit.get("country", []))
-                if location_parts_list:
-                    meta["prism2:location"] = ", ".join(location_parts_list)
+                item_location_parts_list: list[str] = []
+                item_location_parts_list.extend(str(p) for p in hit.get("publish_place", []))
+                item_location_parts_list.extend(str(c) for c in hit.get("country", []))
+                if item_location_parts_list:
+                    meta["prism2:location"] = ", ".join(item_location_parts_list)
 
-                description_parts_list: list[
+                item_description_parts_list: list[
                     str
-                ] = []  # Renamed description to description_parts_list
+                ] = []
                 if hit.get("series"):
-                    series_str = str(hit["series"])
-                    meta["prism2:seriesTitle"] = series_str
-                    description_parts_list.append(series_str)
+                    series_string = str(hit["series"])
+                    meta["prism2:seriesTitle"] = series_string
+                    item_description_parts_list.append(series_string)
 
-                dc_freq_text = dc.get("frequency", {}).get("text")
-                if dc_freq_text:
-                    dc_freq_str = str(dc_freq_text)
-                    meta["prism2:publishingFrequency"] = dc_freq_str
-                    description_parts_list.append(dc_freq_str)
+                dc_frequency_text = dc_metadata.get("frequency", {}).get("text")
+                if dc_frequency_text:
+                    dc_frequency_string = str(dc_frequency_text)
+                    meta["prism2:publishingFrequency"] = dc_frequency_string
+                    item_description_parts_list.append(dc_frequency_string)
                 if hit.get("press_title"):
-                    press_title_str = str(hit["press_title"])
-                    meta["prism2:publicationName"] = press_title_str
-                    description_parts_list.append(press_title_str)
+                    press_title_string = str(hit["press_title"])
+                    meta["prism2:publicationName"] = press_title_string
+                    item_description_parts_list.append(press_title_string)
 
-                description_parts_list.extend(str(n) for n in hit.get("notes", []))
-                description_parts_list.extend(
+                item_description_parts_list.extend(str(n) for n in hit.get("notes", []))
+                item_description_parts_list.extend(
                     str(pd) for pd in hit.get("physical_description", [])
                 )
-                description_parts_list.extend(str(s) for s in hit.get("sources", []))
-                description_parts_list.extend(str(p) for p in hit.get("projects", []))
+                item_description_parts_list.extend(str(s) for s in hit.get("sources", []))
+                item_description_parts_list.extend(str(p) for p in hit.get("projects", []))
 
-                if description_parts_list:
-                    description_text_str = "; ".join(description_parts_list)  # Renamed
-                    meta["dc:description"] = description_text_str
+                if item_description_parts_list:
+                    description_text_string = "; ".join(item_description_parts_list)
+                    meta["dc:description"] = description_text_string
             pdf.save(pdf_path)  # type: ignore[no-untyped-call]
             return True
-        except Exception as e:
+        except (pikepdf.PdfError, TypeError, KeyError, AttributeError) as e: # More specific exceptions
             log.error(f"Failed to add metadata to PDF {pdf_path}: {e}")
             return False
+        except Exception as e: # Fallback for other unexpected pikepdf errors
+            log.error(f"Unexpected error adding metadata to PDF {pdf_path}: {e}")
+            return False
+
 
     def pdf_save(self, pdf_path: str, memimages: list[bytes]) -> bool:
-        if not memimages:  # Check if empty
+        if not memimages:
             return False
         try:
             with open(pdf_path, "wb") as pdffile:
@@ -559,71 +603,78 @@ class Polona:
         except OSError as e:
             log.error(f"Failed to write PDF {pdf_path}: {e}")
             return False
-        except Exception as e:  # Catch other img2pdf errors
+        except img2pdf.PdfCreationError as e: # More specific
             log.error(f"Failed to convert images to PDF for {pdf_path}: {e}")
             return False
+        except Exception as e:  # Catch other img2pdf errors
+            log.error(f"Unexpected error converting images to PDF for {pdf_path}: {e}")
+            return False
 
-    def download_save_textpdf(self, url_str: str, pdf_path: str) -> bool:
+    def download_save_textpdf(self, url_string: str, pdf_path: str) -> bool:
         try:
-            r = requests.get(url_str, stream=True)
-            r.raise_for_status()  # Check for HTTP errors
-            content_type = r.headers.get("content-type", "")
+            response = requests.get(url_string, stream=True)
+            response.raise_for_status()
+            content_type = response.headers.get("content-type", "")
             if (
                 ".pdf" in mimetypes.guess_all_extensions(content_type)
                 or "application/pdf" in content_type
             ):
                 with open(pdf_path, "wb") as pdf_file:
-                    pdf_file.write(r.content)
+                    pdf_file.write(response.content)
                 return True
             else:
                 # Enhanced JPEG detection
                 if content_type.lower().startswith("image/jpeg") or content_type.lower().startswith("image/pjpeg"):
-                    # Content type is a JPEG variant
-                    return r.content
+                    # Content type is a JPEG variant, but we expect to save a PDF.
+                    # This path should ideally not be taken if the primary goal is textpdf.
+                    # For now, align with original logic's intent if it was to handle unexpected JPEGs.
+                    # However, the function is download_SAVE_textPDF. Returning True might be misleading.
+                    # Sticking to correcting the immediate bug of returning bytes.
+                    log.warn(f"Expected PDF, received JPEG for {url_string}. Cannot save as text PDF.")
+                    return False # Corrected: Should be boolean, and False as it's not a PDF.
                 # Fallback: check JPEG file signature (magic number)
-                if r.content[:2] == b'\xff\xd8' and r.content[-2:] == b'\xff\xd9':
+                if response.content[:2] == b'\xff\xd8' and response.content[-2:] == b'\xff\xd9':
                     # JPEG files start with FF D8 and end with FF D9
-                    log.info(f"JPEG detected by file signature for {url_str}")
-                    return r.content
-                log.warn(f"Content type for {url_str} is not PDF or JPEG: {content_type}")
+                    log.info(f"JPEG detected by file signature for {url_string}. Cannot save as text PDF.")
+                    return False # Corrected: Should be boolean, and False as it's not a PDF.
+                log.warn(f"Content type for {url_string} is not PDF or JPEG: {content_type}")
                 return False
         except requests.RequestException as e:
-            log.error(f"Failed to download text PDF from {url_str}: {e}")
+            log.error(f"Failed to download text PDF from {url_string}: {e}")
             return False
         except OSError as e:
             log.error(f"Failed to write text PDF to {pdf_path}: {e}")
             return False
 
-    def download_scan(self, url_str: str) -> bytes | None:
+    def download_scan(self, url_string: str) -> bytes | None:
         try:
-            r = requests.get(url_str, stream=True)
-            r.raise_for_status()
-            content_type = r.headers.get("content-type", "")
-            # Check common JPEG mime types and extensions
+            response = requests.get(url_string, stream=True)
+            response.raise_for_status()
+            content_type = response.headers.get("content-type", "")
             if (
                 ".jpg" in mimetypes.guess_all_extensions(content_type)
                 or ".jpeg" in mimetypes.guess_all_extensions(content_type)
                 or "image/jpeg" in content_type
             ):
-                return r.content
+                return response.content
             else:
-                log.warn(f"Content type for scan {url_str} is not JPEG: {content_type}")
+                log.warn(f"Content type for scan {url_string} is not JPEG: {content_type}")
                 return None
         except requests.RequestException as e:
-            log.error(f"Failed to download scan from {url_str}: {e}")
+            log.error(f"Failed to download scan from {url_string}: {e}") # Corrected log message
             return None
 
     def download_ids(self):
-        all_ids_local = self.ids[
+        all_item_ids_local = self.ids[
             :
-        ]  # Create a copy if modification during iteration is a concern
-        total = len(all_ids_local)
-        for idx, item_id_local in enumerate(all_ids_local):
-            progress_str = f"[doc {idx + 1:03d}/{total:03d}]"
+        ]
+        total = len(all_item_ids_local)
+        for idx, single_item_id_local in enumerate(all_item_ids_local):
+            progress_string = f"[doc {idx + 1:03d}/{total:03d}]"
             if self.download_id(
-                item_id_local, progress_str
-            ):  # item_id_local was already correctly named
-                log.info(f"{progress_str}: {item_id_local} processed")
+                single_item_id_local, progress_string
+            ):
+                log.info(f"{progress_string}: {single_item_id_local} processed")
 
     def download(self):
         if self.can_download():
