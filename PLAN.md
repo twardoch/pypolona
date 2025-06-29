@@ -1,122 +1,264 @@
-# PyPolona Streamlining Plan (MVP v1.0 Focus)
+# PyPolona Improvement Plan - Next Steps for Stability and Deployment
 
-This document outlines the detailed steps to streamline the PyPolona codebase, focusing on creating a performant and focused Minimum Viable Product (MVP) v1.0.
+## Executive Summary
 
-1.  **Initial Setup & Analysis:**
-    *   (Completed) Verified understanding of the project structure and main functionalities by reviewing `llms.txt`.
-    *   (Current) Create `PLAN.md` (this file), `TODO.md` (checklist version), and `CHANGELOG.md` (initialized).
+PyPolona is a mature Python application (v1.6.2) for downloading content from Polona.pl digital library. Recent refactoring efforts have improved code quality, but several key improvements remain to make the codebase more stable, elegant, and deployable.
 
-2.  **Remove Vendored Gooey (`src/gooey`):**
-    *   **Rationale:** The `src/gooey` directory appears to be a local copy of the Gooey library. `ezgooey` is listed as a dependency in `pyproject.toml`, which should provide the necessary GUI functionality, making the vendored copy redundant and a source of maintenance overhead.
-    *   **Action:**
-        *   Confirm that `ezgooey` is sufficient. This might involve a quick check of `ezgooey`'s capabilities or assuming it wraps/replaces the need for a direct Gooey copy.
-        *   Delete the entire `src/gooey` directory from the repository.
-        *   If the `src/` directory becomes empty or only contains project-specific code, ensure it's correctly handled by version control (e.g., no empty `src/` directory unless intended).
-    *   **Verification:**
-        *   Run the application with the GUI (`ppolona` or `pypolona-gui`).
-        *   Manually test basic GUI interactions (opening, input fields, starting a task) to ensure no regressions.
-        *   The CI pipeline runs `pytest`; if any tests cover GUI aspects that might break, they should indicate issues.
+## Current State Assessment
 
-3.  **Simplify `pypolona/__main__.py`:**
-    *   **Rationale:** The current `__main__.py` contains commented-out code and a slightly verbose structure for initializing the application.
-    *   **Actions:**
-        *   Remove the commented-out `webgui` section that uses `Cli2Gui`. This functionality is not active and adds clutter.
-        *   Simplify the `main()` function: The `if True:` block is redundant. The logic can be streamlined to directly call `gui(*args, **kwargs)` and then `parser.parse_args()`.
-    *   **Verification:**
-        *   Run the CLI with various arguments (e.g., `ppolona -h`, `ppolona --search test --download`).
-        *   Run the GUI.
-        *   Ensure both modes start correctly and parse arguments as expected.
+### Completed Improvements
+1. **Code Organization**:
+   - Removed redundant `app/ppolona.py` wrapper
+   - Cleaned up `dmgbuild_settings.py` 
+   - Simplified `__main__.py` by removing commented code
 
-4.  **Refactor `pypolona/polona.py` (Core Logic):**
-    *   **Rationale:** This is the largest and most complex file, offering significant opportunities for improving clarity, maintainability, and robustness.
-    *   **Sub-tasks:**
-        *   **Improve Readability and Reduce Complexity:**
-            *   Identify long methods like `save_downloaded()` and `pdf_add_meta()`. If they handle multiple distinct stages, consider breaking them into smaller, private helper methods. For example, `save_downloaded` deals with path creation, YAML saving, image downloading, PDF creation, and text PDF handling.
-            *   Rename variables for better clarity (e.g., `r` to `response`, `jhits` to `json_hits`, `hit_data` to `item_data_json`).
-            *   Review complex conditional logic or nested loops for potential simplification.
-        *   **Error Handling:**
-            *   Go through each `try...except Exception as e:` block.
-            *   Replace `Exception` with more specific exceptions like `requests.exceptions.RequestException`, `json.JSONDecodeError`, `IOError`/`OSError`, `pikepdf.PdfError`, `TypeError`, `KeyError`, etc., where the type of error can be anticipated. This allows for more granular error handling and reporting.
-        *   **Type Hinting:**
-            *   Attempt to resolve existing `# type: ignore` comments by providing correct type information or refactoring the code to be more type-friendly.
-            *   Replace `Any` with more specific types (e.g., `dict[str, str]`, `list[HitObject]`, custom `TypedDict`s or dataclasses if beneficial for complex structures like `hit`).
-        *   **Logging:**
-            *   Ensure a consistent logging strategy:
-                *   `log.debug()` for detailed information useful for developers.
-                *   `log.info()` for user-facing progress messages and successful operations.
-                *   `log.warn()` for potential issues or recoverable errors (e.g., skipping an existing file).
-                *   `log.error()` for errors that prevent a specific part of the process from completing (e.g., failing to download a single image).
-                *   `log.critical()` for errors that prevent the application from continuing meaningfully.
-            *   Review log messages: ensure they are informative, include relevant context (like item IDs or file paths), and avoid excessive verbosity at default levels.
-        *   **Consolidate Helper Functions:**
-            *   Review `_requests_encode_dict()`: `requests` can handle dictionary parameters directly for GET requests using the `params` argument. Check if this custom encoding is strictly necessary for Polona's API or if it can be simplified/removed.
-        *   **Resource Management:**
-            *   Double-check all file operations (`open()`) use the `with` statement to ensure files are closed properly, even if errors occur. (This seems largely in place but worth a final check).
-    *   **Verification:**
-        *   This is the most critical part. Extensive manual testing of all core functionalities (search types, download formats, options) will be required.
-        *   Pay close attention to edge cases (e.g., no results found, item with no images, API errors).
-        *   Run existing `pytest` tests.
+2. **Code Quality**:
+   - Improved variable naming throughout `polona.py`
+   - Enhanced error handling with specific exceptions
+   - Broke down large methods into smaller helper functions
+   - Fixed bug in `download_save_textpdf()` return type
 
-5.  **Streamline `app/` Directory:**
-    *   **Rationale:** Reduce boilerplate and simplify the application's packaging structure.
-    *   **Actions:**
-        *   **`app/ppolona.py`:** This script (`#!/usr/bin/env python3\nfrom pypolona.__main__ import *\nmain()`) is likely redundant. The `pyproject.toml` entries for `[project.scripts]` (`ppolona = "pypolona.__main__:main"`) and `[project.gui-scripts]` should allow direct execution. Verify this and remove `app/ppolona.py` if confirmed.
-        *   **`app/dmgbuild_settings.py`:** This file contains many comments and example settings from `dmgbuild`. Remove commented-out sections that are not actively used by PyPolona to make the file cleaner and focused on actual configuration.
-    *   **Verification:**
-        *   If `app/ppolona.py` is removed, ensure the application can still be launched via the defined script/gui-script entry points.
-        *   Building the DMG (on macOS) should still work correctly after cleaning `dmgbuild_settings.py`.
+3. **Documentation**:
+   - Created structured development docs (PLAN.md, TODO.md, CHANGELOG.md)
+   - Added `.dccache` to `.gitignore`
 
-6.  **Review and Update Dependencies (`pyproject.toml`):**
-    *   **Rationale:** Ensure the project only depends on necessary libraries and that versions are appropriate for an MVP.
-    *   **Actions:**
-        *   Cross-reference imported libraries in the code against `pyproject.toml` to ensure no unused dependencies are listed.
-        *   For the MVP, major dependency updates (e.g., for `pikepdf`, `lxml`) will be deferred unless an existing version has a known critical issue impacting core functionality. The goal is stability for MVP. Log these as potential post-MVP improvements.
-        *   Confirm `requests` is present (it is).
-    *   **Verification:**
-        *   The application should install and run correctly with the specified dependencies.
-        *   CI pipeline (which installs dependencies) should pass.
+### Outstanding Issues
+1. **Technical Debt**:
+   - Vendored Gooey library (`src/gooey/`) still present
+   - `.dccache` file tracked in git
+   - Complex methods still need further decomposition
+   - Inconsistent code style in some areas
 
-7.  **Handle `.dccache` file:**
-    *   **Rationale:** This file appears to be a local cache file (possibly from an IDE or linting tool like `pylint`) that should not be part of the repository.
-    *   **Actions:**
-        *   Remove `.dccache` from version control using `git rm --cached .dccache` (if tracked) or just delete it if untracked but present.
-        *   Add `.dccache` to the `.gitignore` file to prevent it from being accidentally committed in the future.
-    *   **Verification:**
-        *   `git status` should not show `.dccache` as a tracked or untracked file (after adding to `.gitignore`).
+2. **Quality Assurance**:
+   - Limited test coverage
+   - No automated integration tests
+   - Manual testing process not documented
 
-8.  **Testing and Validation:**
-    *   **Rationale:** Ensure all changes haven't introduced regressions and the application remains functional.
-    *   **Actions:**
-        *   **Manual Testing:** Systematically test all core features as outlined in the plan's "Testing and Validation" step. This includes:
-            *   Different search modes (URL, simple search, advanced search, IDs).
-            *   Download formats (JPEGs in subfolders, single PDF).
-            *   Option to download/skip searchable text PDFs.
-            *   Key options: `--max-pages`, `--no-overwrite` (formerly `--skip`), language filters, sort orders.
-            *   Error conditions: invalid input, network errors (if mockable or by temporarily disconnecting), items with no downloadable content.
-        *   **Automated Tests:**
-            *   The CI configuration in `.github/workflows/ci.yml` specifies `pytest`. Run these tests locally after major refactoring steps, especially for `polona.py`.
-            *   If test coverage is low for core logic, this is a high-priority item for post-MVP improvement. For the MVP, robust manual testing will be key.
-    *   **Verification:** All manual tests pass. All existing automated tests pass.
+3. **Deployment & Distribution**:
+   - Build process could be streamlined
+   - No automated release pipeline
+   - Cross-platform packaging needs verification
 
-9.  **Update Documentation:**
-    *   **Rationale:** Keep user-facing and developer documentation synchronized with the changes.
-    *   **Actions:**
-        *   **`README.md`:**
-            *   Review installation instructions, especially if `app/ppolona.py` is removed or build processes change.
-            *   Update any command-line examples or GUI descriptions if features were altered (e.g., `--skip` changed to `--no-overwrite` was already in README, but verify).
-            *   Ensure screenshots are still representative if GUI elements changed (unlikely with `ezgooey` abstraction).
-        *   **`PLAN.md` (this file) and `TODO.md`:** Mark completed steps.
-        *   **`CHANGELOG.md`:** Add entries for all significant changes, bug fixes, and refactorings made during this streamlining process.
-    *   **Verification:** Documentation is accurate and reflects the current state of the application.
+## Detailed Improvement Plan
 
-10. **Final Review and Submission:**
-    *   **Rationale:** A final quality check before concluding the task.
-    *   **Actions:**
-        *   Perform a self-review of all code changes.
-        *   Ensure all temporary files or debug statements have been removed.
-        *   Ensure the application builds correctly (if applicable to the testing environment).
-        *   Create a comprehensive commit message summarizing the streamlining effort.
-        *   Submit the changes to the designated branch.
-    *   **Verification:** Code is clean, well-formatted, and meets the goals of the MVP streamlining.
----
-(This `PLAN.md` will be created in the filesystem)
+### Phase 1: Clean Up Technical Debt (1-2 days)
+
+#### 1.1 Remove Vendored Dependencies
+```bash
+# Remove vendored Gooey library
+rm -rf src/gooey
+git rm -r --cached src/gooey
+git commit -m "Remove vendored Gooey library - using ezgooey dependency"
+
+# Remove .dccache from tracking
+git rm --cached .dccache
+git commit -m "Remove .dccache from version control"
+```
+
+#### 1.2 Code Style Standardization
+- Run `ruff format` on entire codebase
+- Configure `ruff` rules in `pyproject.toml`:
+  ```toml
+  [tool.ruff]
+  line-length = 100
+  target-version = "py39"
+  select = ["E", "F", "I", "N", "UP", "YTT", "B", "A", "C4", "T10", "ISC", "ICN", "PIE", "PT", "RET", "SIM", "ARG"]
+  ignore = ["E501"]  # line too long - handled by formatter
+  ```
+- Set up pre-commit hooks for consistency
+
+### Phase 2: Refactor Core Module (2-3 days)
+
+#### 2.1 Further Decompose `polona.py`
+Break down into logical modules:
+```
+pypolona/
+├── __init__.py
+├── __main__.py
+├── api.py          # API interaction logic
+├── downloader.py   # Download management
+├── pdf_builder.py  # PDF creation and metadata
+├── models.py       # Data models/types
+├── utils.py        # Helper functions
+└── constants.py    # Configuration constants
+```
+
+#### 2.2 Implement Proper Data Models
+Replace dictionary-based data with dataclasses:
+```python
+from dataclasses import dataclass
+from typing import Optional, List
+
+@dataclass
+class PolonaItem:
+    id: str
+    title: str
+    creator: Optional[str]
+    date: Optional[str]
+    slug: str
+    image_urls: List[str]
+    metadata: dict
+```
+
+#### 2.3 Improve Type Safety
+- Replace all `Any` types with specific types
+- Create TypedDict definitions for API responses
+- Enable strict mypy checking:
+  ```toml
+  [tool.mypy]
+  strict = true
+  warn_return_any = true
+  warn_unused_configs = true
+  ```
+
+### Phase 3: Testing Infrastructure (2-3 days)
+
+#### 3.1 Unit Tests
+Create comprehensive test suite:
+```
+tests/
+├── test_api.py         # API interaction tests
+├── test_downloader.py  # Download logic tests
+├── test_pdf_builder.py # PDF creation tests
+├── test_cli.py         # CLI argument parsing
+└── fixtures/           # Test data
+```
+
+#### 3.2 Integration Tests
+- Mock Polona API responses
+- Test full download workflows
+- Verify PDF generation with metadata
+
+#### 3.3 Testing Goals
+- Achieve 80%+ code coverage
+- All critical paths tested
+- Edge cases covered
+
+### Phase 4: Deployment & Distribution (2-3 days)
+
+#### 4.1 Build Automation
+Create GitHub Actions workflow for releases:
+```yaml
+name: Build and Release
+on:
+  push:
+    tags:
+      - 'v*'
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Build executable
+        run: |
+          pip install -e .[dev]
+          pyinstaller pypolona.spec
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+```
+
+#### 4.2 Package Distribution
+- Publish to PyPI for pip installation
+- Create Homebrew formula for macOS
+- Consider Flatpak for Linux
+- Maintain Windows installer
+
+#### 4.3 Version Management
+- Implement semantic versioning
+- Automate version bumping
+- Generate release notes from CHANGELOG.md
+
+### Phase 5: Performance & Optimization (1-2 days)
+
+#### 5.1 Download Optimization
+- Implement concurrent image downloads
+- Add progress bars for long operations
+- Cache API responses where appropriate
+
+#### 5.2 Memory Efficiency
+- Stream large files instead of loading to memory
+- Optimize PDF generation for large documents
+- Add memory usage monitoring
+
+### Phase 6: User Experience (1-2 days)
+
+#### 6.1 Error Messages
+- Create user-friendly error messages
+- Add troubleshooting guide
+- Implement error recovery where possible
+
+#### 6.2 Configuration
+- Add config file support (~/.pypolona/config.yaml)
+- Allow saving common search parameters
+- Implement download profiles
+
+#### 6.3 Documentation
+- Create comprehensive user guide
+- Add API documentation
+- Include examples and tutorials
+
+## Implementation Priority
+
+1. **Critical (Do First)**:
+   - Remove vendored dependencies
+   - Fix tracked files (.dccache)
+   - Add basic test coverage
+
+2. **High Priority**:
+   - Refactor polona.py into modules
+   - Implement data models
+   - Set up CI/CD pipeline
+
+3. **Medium Priority**:
+   - Performance optimizations
+   - Enhanced error handling
+   - Configuration system
+
+4. **Nice to Have**:
+   - Additional package formats
+   - Advanced features
+   - GUI improvements
+
+## Success Metrics
+
+- **Code Quality**: 
+  - Zero mypy errors with strict checking
+  - Ruff compliance
+  - 80%+ test coverage
+
+- **Performance**:
+  - 2x faster downloads with concurrency
+  - Memory usage under 500MB for large PDFs
+
+- **Deployment**:
+  - Automated builds for 3 platforms
+  - One-command installation
+  - < 5 minute build time
+
+## Timeline Estimate
+
+- Phase 1: 1-2 days
+- Phase 2: 2-3 days  
+- Phase 3: 2-3 days
+- Phase 4: 2-3 days
+- Phase 5: 1-2 days
+- Phase 6: 1-2 days
+
+**Total: 10-15 days of focused development**
+
+## Next Immediate Steps
+
+1. Remove `src/gooey` directory
+2. Untrack `.dccache` file
+3. Run formatter and linter
+4. Create first unit tests
+5. Set up GitHub Actions workflow
+
+This plan provides a clear path to transform PyPolona into a professional, maintainable, and easily deployable application while preserving its core functionality and user experience.
