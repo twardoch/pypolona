@@ -1,105 +1,285 @@
-name: Python CI/CD
+name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, master ] # Adjust if your main branch has a different name
+    branches: [ main, master ]
     tags:
-      - 'v*' # Also trigger on version tags
+      - 'v*'
   pull_request:
     branches: [ main, master ]
 
 jobs:
-  lint-and-test:
+  test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12"]
+    
     steps:
     - uses: actions/checkout@v4
       with:
-        fetch-depth: 0 # Needed for hatch-vcs to determine version from git tags
+        fetch-depth: 0  # Needed for hatch-vcs to determine version from git tags
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Install uv
-      run: curl -LsSf https://astral.sh/uv/install.sh | sh
-
-    - name: Install dependencies
+    - name: Install system dependencies
       run: |
-        uv venv --python ${{ matrix.python-version }} .venv
-        source .venv/bin/activate
-        uv pip install -e .[dev]
-        # Install GTK dependencies for wxPython (needed by Gooey)
         sudo apt-get update
         sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
 
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .[dev]
+
     - name: Lint with Ruff
       run: |
-        source .venv/bin/activate
         ruff check .
         ruff format --check .
 
     - name: Type check with Mypy
       run: |
-        source .venv/bin/activate
         mypy pypolona/
 
     - name: Test with Pytest
       run: |
-        source .venv/bin/activate
-        pytest
+        pytest --cov=pypolona --cov-report=xml --cov-report=term-missing
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        file: ./coverage.xml
+        fail_ci_if_error: false
 
     - name: Build package
       run: |
-        source .venv/bin/activate
         hatch build
 
-  # Optional: Publish to PyPI on new version tags
-  # publish-to-pypi:
-  #   needs: lint-and-test # Ensure tests and linting pass before publishing
-  #   runs-on: ubuntu-latest
-  #   if: startsWith(github.ref, 'refs/tags/v') # Only run on version tags
-  #   steps:
-  #   - uses: actions/checkout@v4
-  #     with:
-  #       fetch-depth: 0 # For hatch-vcs
-  #
-  #   - name: Set up Python
-  #     uses: actions/setup-python@v5
-  #     with:
-  #       python-version: "3.12" # Or your preferred Python version for publishing
-  #
-  #   - name: Install uv and build tools
-  #     run: |
-  #       curl -LsSf https://astral.sh/uv/install.sh | sh
-  #       source $HOME/.cargo/env # To make uv available in PATH for next steps
-  #       uv venv .venv
-  #       source .venv/bin/activate
-  #       uv pip install hatch twine
-  #
-  #   - name: Build package
-  #     run: |
-  #       source .venv/bin/activate
-  #       hatch build -t sdist -t wheel
-  #
-  #   - name: Publish package to PyPI
-  #     env:
-  #       TWINE_USERNAME: __token__
-  #       TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }} # Store your PyPI token as a GitHub secret
-  #     run: |
-  #       source .venv/bin/activate
-  #       twine upload dist/*
-  #
-  #   # Optional: Create GitHub Release
-  #   - name: Create GitHub Release
-  #     uses: softprops/action-gh-release@v2 # Check for latest version
-  #     if: startsWith(github.ref, 'refs/tags/')
-  #     with:
-  #       files: dist/*
-  #       # body_path: CHANGELOG.md # Optional: path to your changelog
-  #       # prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-alpha') || contains(github.ref, '-beta') }} # Optional: mark as pre-release
-  #     env:
-  #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  build-binaries:
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            artifact_name: pypolona-linux
+            executable_name: ppolona
+          - os: macos-latest
+            artifact_name: pypolona-macos
+            executable_name: ppolona
+          - os: windows-latest
+            artifact_name: pypolona-windows
+            executable_name: ppolona.exe
+    
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install system dependencies (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .[dev]
+
+    - name: Create PyInstaller spec
+      run: |
+        cat > pypolona.spec << 'EOF'
+        # -*- mode: python ; coding: utf-8 -*-
+        
+        block_cipher = None
+        
+        a = Analysis(
+            ['pypolona/__main__.py'],
+            pathex=[],
+            binaries=[],
+            datas=[
+                ('pypolona/icons', 'pypolona/icons'),
+            ],
+            hiddenimports=[
+                'pypolona.polona',
+                'ezgooey',
+                'wx',
+                'wx.lib.agw',
+                'wx.lib.newevent',
+                'wx._core',
+                'wx._html',
+                'wx._adv',
+                'PIL._tkinter_finder',
+                'pkg_resources.py2_warn',
+            ],
+            hookspath=[],
+            hooksconfig={},
+            runtime_hooks=[],
+            excludes=[],
+            win_no_prefer_redirects=False,
+            win_private_assemblies=False,
+            cipher=block_cipher,
+            noarchive=False,
+        )
+        
+        pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+        
+        exe = EXE(
+            pyz,
+            a.scripts,
+            a.binaries,
+            a.zipfiles,
+            a.datas,
+            [],
+            name='ppolona',
+            debug=False,
+            bootloader_ignore_signals=False,
+            strip=False,
+            upx=True,
+            upx_exclude=[],
+            runtime_tmpdir=None,
+            console=True,
+            disable_windowed_traceback=False,
+            argv_emulation=False,
+            target_arch=None,
+            codesign_identity=None,
+            entitlements_file=None,
+            icon='pypolona/icons/pypolona.ico' if '${{ matrix.os }}' == 'windows-latest' else 'pypolona/icons/pypolona.icns',
+        )
+        EOF
+
+    - name: Build with PyInstaller
+      run: |
+        pyinstaller pypolona.spec
+
+    - name: Create DMG (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        # Create app bundle structure
+        mkdir -p dist/PyPolona.app/Contents/MacOS
+        mkdir -p dist/PyPolona.app/Contents/Resources
+        cp dist/ppolona dist/PyPolona.app/Contents/MacOS/
+        cp pypolona/icons/pypolona.icns dist/PyPolona.app/Contents/Resources/
+        
+        # Create Info.plist
+        cat > dist/PyPolona.app/Contents/Info.plist << 'EOF'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>CFBundleName</key>
+            <string>PyPolona</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.twardoch.pypolona</string>
+            <key>CFBundleVersion</key>
+            <string>1.0</string>
+            <key>CFBundleExecutable</key>
+            <string>ppolona</string>
+            <key>CFBundleIconFile</key>
+            <string>pypolona.icns</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+        </dict>
+        </plist>
+        EOF
+        
+        # Create DMG using existing settings
+        dmgbuild -s app/dmgbuild_settings.py "PyPolona" dist/pypolona-macos.dmg
+
+    - name: Create installer (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        # Create a simple zip package for Windows
+        cd dist
+        powershell Compress-Archive -Path ppolona.exe -DestinationPath pypolona-windows.zip
+
+    - name: Create tar.gz (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        cd dist
+        tar -czf pypolona-linux.tar.gz ppolona
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact_name }}
+        path: |
+          dist/pypolona-*.dmg
+          dist/pypolona-*.zip
+          dist/pypolona-*.tar.gz
+        retention-days: 90
+
+  publish-pypi:
+    needs: [test, build-binaries]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write  # For trusted publishing
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .[dev]
+
+    - name: Build package
+      run: |
+        hatch build
+
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        skip-existing: true
+
+  create-release:
+    needs: [test, build-binaries, publish-pypi]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          artifacts/**/*
+        generate_release_notes: true
+        prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-alpha') || contains(github.ref, '-beta') }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

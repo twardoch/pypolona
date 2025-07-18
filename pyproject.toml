@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pypolona"
-dynamic = ["version"] # Reverted to dynamic versioning
+dynamic = ["version"]
 description = "Image downloader for the polona.pl website of the Polish National Library"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -38,11 +38,12 @@ dependencies = [
     "yaplon>=1.2.4",
     "python-dateutil>=2.8.1",
     "img2pdf>=0.4.0",
-    "pikepdf>=1.19.3", # Consider updating if possible, current is quite old
-    "lxml>=4.5.2", # Consider updating
+    "pikepdf>=1.19.3",
+    "lxml>=4.5.2",
     "lxml2json>=0.2.6",
-    "requests", # Added, was missing from requirements.txt but used in code
+    "requests",
     "pywin32>=228; sys_platform == 'win32'",
+    "importlib-metadata>=4.0.0; python_version < '3.8'",
 ]
 
 keywords = ["polona", "jpeg", "downloader", "cli", "gui", "archive", "library", "national library of poland"]
@@ -71,10 +72,11 @@ dev = [
     "biplist>=1.0.0", # For app/dmgbuild_settings.py
 ]
 
-[tool.hatch.version] # Restored
+[tool.hatch.version]
 source = "vcs"
+fallback-version = "0.0.0"
 
-[tool.hatch.version.raw-options] # Restored
+[tool.hatch.version.raw-options]
 version_scheme = "semver"
 local_scheme = "no-local-version"
 

@@ -7,6 +7,7 @@ MIT license. Python 3.8+
 """
 
 import json
+import logging
 import mimetypes
 import os
 import os.path
@@ -25,9 +26,14 @@ from orderedattrdict import AttrDict as ad
 
 from yaplon import oyaml
 
-from . import *
+try:
+    from . import *
+except ImportError:
+    pass
 
-log = logging.logger("pypolona")
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger("pypolona")
 
 try:
     from .__init__ import __version__ as version
