@@ -77,7 +77,7 @@ source = "vcs"
 fallback-version = "0.0.0"
 
 [tool.hatch.version.raw-options]
-version_scheme = "semver"
+version_scheme = "python-simplified-semver"
 local_scheme = "no-local-version"
 
 [tool.hatch.scripts]
@@ -133,3 +133,6 @@ addopts = "-ra -q --cov=pypolona --cov-report=term-missing"
 testpaths = [
     "tests",
 ]
+
+[tool.hatch.build.hooks.vcs]
+version-file = "pypolona/__version__.py"
