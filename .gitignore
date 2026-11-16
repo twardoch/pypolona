@@ -110,3 +110,4 @@ venv.bak/
 .mypy_cache/
 
 app/build/\n# Hatch\n.hatch\n*.lock\n
+pypolona/__version__.py
