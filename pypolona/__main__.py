@@ -25,6 +25,7 @@ except ImportError:
     from pypolona.__init__ import __version__ as version
 
 from ezgooey.ez import *
+import ezgooey.logging as logging  # ezgooey>=2 no longer re-exports it from ez
 
 # from cli2gui import Cli2Gui
 
