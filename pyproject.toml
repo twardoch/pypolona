@@ -65,6 +65,7 @@ dev = [
     "mypy",
     "pytest",
     "pytest-cov",
+    "packaging",
     "pre-commit",
     "twine>=3.4.1",
     "pyinstaller>=4.2", # Keep for building executables

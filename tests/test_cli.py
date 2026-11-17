@@ -81,7 +81,8 @@ def test_parser_language_options():
     """Test parsing language options."""
     parser = cli()
     
-    args = parser.parse_args(["--lang", "polski", "angielski", "test"])
+    # --lang takes any number of values, so the query must come first.
+    args = parser.parse_args(["test", "--lang", "polski", "angielski"])
     assert args.search_languages == ["polski", "angielski"]
 
 
@@ -114,9 +115,9 @@ def test_main_search_execution(mock_polona_class):
     with patch.object(sys, 'argv', ['ppolona'] + test_args):
         main()
     
-    # Verify Polona was instantiated and called correctly
+    # Polona does its work in the constructor; main() passes the parsed options.
     mock_polona_class.assert_called_once()
-    mock_polona.run.assert_called_once()
+    assert mock_polona_class.call_args.kwargs["query"] == test_args[-1:]
 
 
 @patch('pypolona.__main__.Polona')
@@ -132,6 +133,6 @@ def test_main_download_execution(mock_polona_class):
     with patch.object(sys, 'argv', ['ppolona'] + test_args):
         main()
     
-    # Verify Polona was instantiated and called correctly
+    # Polona does its work in the constructor; main() passes the parsed options.
     mock_polona_class.assert_called_once()
-    mock_polona.run.assert_called_once()
+    assert mock_polona_class.call_args.kwargs["query"] == test_args[-1:]
